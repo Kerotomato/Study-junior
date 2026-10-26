@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #f59e0b;
+  --color-brand-dark: #b45309;
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl bg-white p-4 shadow-sm ring-1 ring-stone-200;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center rounded-xl bg-brand px-4 py-2 font-bold text-white active:bg-brand-dark disabled:opacity-50;
+  }
+  .btn-sub {
+    @apply inline-flex items-center justify-center rounded-xl bg-stone-100 px-3 py-2 text-sm font-bold text-stone-700 active:bg-stone-200;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center rounded-xl bg-red-600 px-3 py-2 text-sm font-bold text-white active:bg-red-700;
+  }
+  .input {
+    @apply w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-base;
+  }
+  .label {
+    @apply mb-1 block text-sm font-bold text-stone-600;
+  }
+  .h2 {
+    @apply mb-2 text-lg font-bold;
+  }
+}
+
+body {
+  @apply bg-amber-50 text-stone-800;
+}
