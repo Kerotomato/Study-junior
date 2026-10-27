@@ -1,5 +1,5 @@
 import { markExchangeGiven } from "@/app/actions/exchange";
-import { ExchangeChecks, ExchangeStatus } from "@/components/ExchangeStatus";
+import { ExchangeStatus } from "@/components/ExchangeStatus";
 import { Flash, type SearchParams } from "@/components/Flash";
 import { requireParent } from "@/lib/auth";
 import { formatJstDateTime } from "@/lib/dates";
@@ -30,11 +30,11 @@ export default async function ExchangesPage({ searchParams }: { searchParams: Se
     <>
       <Flash searchParams={searchParams} />
       <section className="card mb-4">
-        <h2 className="h2">受け渡し中の交換</h2>
+        <h2 className="h2">渡し待ちの交換</h2>
         <p className="mb-3 text-xs text-stone-500">
-          承認は不要です。渡したら「渡した」にチェックしてください。子どもが「貰った」にチェックすると完了し、ポイントが減ります。
+          承認は不要です。渡したら「渡した」にチェックしてください。その時点で交換完了になり、ポイントが減ります。
         </p>
-        {pending.length === 0 && <p className="text-sm text-stone-500">受け渡し中の交換はありません</p>}
+        {pending.length === 0 && <p className="text-sm text-stone-500">渡し待ちの交換はありません</p>}
         <ul className="space-y-3">
           {pending.map((r) => (
             <li key={r.id} className="rounded-xl bg-stone-50 p-3">
@@ -43,15 +43,10 @@ export default async function ExchangesPage({ searchParams }: { searchParams: Se
                 {r.points.toLocaleString("ja-JP")}円）
                 <span className="block text-xs text-stone-500">{formatJstDateTime(r.created_at)}に請求</span>
               </p>
-              <ExchangeChecks
-                request={r}
-                givenAction={
-                  <form action={markExchangeGiven}>
-                    <input type="hidden" name="request_id" value={r.id} />
-                    <button className="btn">⬜ 渡した</button>
-                  </form>
-                }
-              />
+              <form action={markExchangeGiven}>
+                <input type="hidden" name="request_id" value={r.id} />
+                <button className="btn">⬜ 渡した</button>
+              </form>
             </li>
           ))}
         </ul>

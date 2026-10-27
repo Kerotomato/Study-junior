@@ -72,3 +72,7 @@ export function formatJstDateTime(iso: string): string {
     minute: "2-digit",
   }).format(new Date(iso));
 }
+
+export function zkaiMonthLabel(month: number): string {
+  return `${month}月`;
+}

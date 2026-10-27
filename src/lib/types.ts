@@ -8,6 +8,13 @@ export interface Profile {
   login_id: string | null;
 }
 
+/** 子どもの学年（Z会の表で使う）。grade は grade_year_start 年度のときの学年 */
+export interface ChildGrade {
+  id: string;
+  grade: number | null;
+  grade_year_start: number | null;
+}
+
 export interface Subject {
   id: string;
   family_id: string;
@@ -88,11 +95,9 @@ export interface Rules {
   streak_points: number;
   weekly_minutes: number;
   weekly_points: number;
-  /** 子どもが作るテスト目標の達成ポイント */
-  test_points: number;
 }
 
-export type LedgerKind = "study" | "adjust" | "test" | "streak" | "weekly" | "lap" | "exchange" | "revoke";
+export type LedgerKind = "study" | "adjust" | "test" | "streak" | "weekly" | "lap" | "exchange" | "revoke" | "zkai";
 
 export interface LedgerEntry {
   id: string;
@@ -104,7 +109,7 @@ export interface LedgerEntry {
   created_at: string;
 }
 
-/** 交換は「渡した（親）」「貰った（子ども）」の両方にチェックが入ると完了し、そのときにポイントを消費する */
+/** 交換は親が「渡した」にチェックした時点で完了し、そのときにポイントを消費する */
 export interface ExchangeRequest {
   id: string;
   child_id: string;
@@ -113,7 +118,6 @@ export interface ExchangeRequest {
   created_at: string;
   given_at: string | null;
   given_by: string | null;
-  received_at: string | null;
   completed_at: string | null;
   cancelled_at: string | null;
 }
@@ -130,7 +134,8 @@ export interface Notification {
     | "exchange_cancelled"
     | "exchange_approved"
     | "exchange_rejected"
-    | "bonus";
+    | "bonus"
+    | "zkai_revoked";
   message: string;
   read: boolean;
   created_at: string;
@@ -145,4 +150,25 @@ export const LEDGER_KIND_LABEL: Record<LedgerKind, string> = {
   lap: "ワーク1周ボーナス",
   exchange: "交換",
   revoke: "取り消し",
+  zkai: "Z会",
 };
+
+export interface ZkaiCheck {
+  id: string;
+  child_id: string;
+  grade: number;
+  year_start: number;
+  month: number;
+  subject: string;
+  points: number;
+  checked_at: string;
+  revoked_at: string | null;
+  revoke_reason: string | null;
+  revoked_by: string | null;
+}
+
+export interface ZkaiPointRule {
+  family_id: string;
+  subject: string;
+  points: number;
+}

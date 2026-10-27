@@ -12,6 +12,7 @@ const ICON: Record<Notification["type"], string> = {
   exchange_approved: "✅",
   exchange_rejected: "↩️",
   bonus: "🎉",
+  zkai_revoked: "↩️",
 };
 
 export function NotificationList({ notifications }: { notifications: Notification[] }) {

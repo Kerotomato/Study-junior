@@ -4,15 +4,13 @@ import { requireChild } from "@/lib/auth";
 import { formatJstDateTime } from "@/lib/dates";
 import { formatPoints } from "@/lib/format";
 import { describeTestGoal } from "@/lib/points";
-import { familyRules } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 import type { TestGoal, TestResult } from "@/lib/types";
 
 export default async function TestsPage({ searchParams }: { searchParams: SearchParams }) {
   const me = await requireChild();
   const supabase = await createClient();
-  const [rules, { data: goalRows }, { data: resultRows }] = await Promise.all([
-    familyRules(supabase, me.family_id),
+  const [{ data: goalRows }, { data: resultRows }] = await Promise.all([
     supabase.from("test_goals").select("*").eq("child_id", me.id).order("created_at"),
     supabase.from("test_results").select("*").eq("child_id", me.id).order("created_at", { ascending: false }).limit(30),
   ]);
@@ -69,9 +67,16 @@ export default async function TestsPage({ searchParams }: { searchParams: Search
             </select>
             <input className="input" name="min_score" type="number" min={0} placeholder="目標点（点数の場合）" aria-label="目標点" />
           </div>
+          <div className="flex items-center gap-2">
+            <label className="shrink-0 text-sm font-bold text-stone-600" htmlFor="goal-points">
+              達成したら
+            </label>
+            <input className="input" id="goal-points" name="points" type="number" min={0} max={1000000} defaultValue={1000} required />
+            <span className="shrink-0 text-sm">pt</span>
+          </div>
           <button className="btn w-full">目標を追加</button>
         </form>
-        <p className="mt-2 text-xs text-stone-500">達成すると +{formatPoints(rules.test_points)}（親がルールで決めた額）</p>
+        <p className="mt-2 text-xs text-stone-500">例：数学80点以上 → 1,000pt、英検3級合格 → 3,000pt</p>
       </section>
 
       {achieved.length > 0 && (

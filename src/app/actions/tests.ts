@@ -1,11 +1,14 @@
 "use server";
 
-import { addLedger, getRules, notify } from "@/lib/awards";
+import { addLedger, notify } from "@/lib/awards";
 import { requireChild, requireChildOfFamily, requireProfile } from "@/lib/auth";
 import { done, fail, int, isNonNegInt, str } from "@/lib/flash";
 import { meetsTestGoal } from "@/lib/points";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { TestGoal } from "@/lib/types";
+
+/** 入力ミス（桁の打ち間違い）を防ぐための上限 */
+const MAX_GOAL_POINTS = 1_000_000;
 
 /** 本人がテスト結果を入力し、目標を満たせば自動でポイントを付与する */
 export async function submitTestResult(form: FormData) {
@@ -39,27 +42,24 @@ export async function submitTestResult(form: FormData) {
   done(back, `目標達成！ +${goal.points}pt`);
 }
 
-/**
- * 子どもがテスト目標を作る（例：80点以上、英検合格）。
- * 達成ポイントは子どもが決めず、親がルールで決めた額を作成時に目標へ記録する。
- */
+/** 子どもがテスト目標と、達成したときのポイントを決める（例：数学80点以上 → 1,000pt、英検3級合格 → 3,000pt） */
 export async function createTestGoal(form: FormData) {
   const me = await requireChild();
   const back = "/child/tests";
   const name = str(form, "name");
   const conditionType = str(form, "condition_type") === "pass" ? "pass" : "min_score";
   const minScore = int(form, "min_score");
+  const points = int(form, "points");
   if (!name) fail(back, "目標の名前を入力してください");
   if (conditionType === "min_score" && !isNonNegInt(minScore)) fail(back, "目標の点数を入力してください");
+  if (!isNonNegInt(points) || points > MAX_GOAL_POINTS) fail(back, `ポイントは0〜${MAX_GOAL_POINTS.toLocaleString("ja-JP")}ptで入力してください`);
 
-  const admin = createAdminClient();
-  const rules = await getRules(admin, me.family_id);
-  const { error } = await admin.from("test_goals").insert({
+  const { error } = await createAdminClient().from("test_goals").insert({
     child_id: me.id,
     name,
     condition_type: conditionType,
     min_score: conditionType === "min_score" ? minScore : null,
-    points: rules.test_points,
+    points,
     created_by: me.id,
   });
   if (error) throw error;

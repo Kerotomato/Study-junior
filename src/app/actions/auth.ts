@@ -5,6 +5,7 @@ import { childEmail } from "@/lib/auth";
 import { fail, str } from "@/lib/flash";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { ZKAI_DEFAULT_POINTS, ZKAI_SUBJECTS } from "@/lib/zkai";
 
 const DEFAULT_SUBJECTS = ["国語", "数学", "英語", "理科", "社会"];
 
@@ -31,6 +32,9 @@ export async function signUp(form: FormData) {
     admin.from("users").insert({ id: userId, family_id: family.id, role: "parent", name }),
     admin.from("rules").insert({ family_id: family.id }),
     admin.from("subjects").insert(DEFAULT_SUBJECTS.map((s) => ({ family_id: family.id, name: s }))),
+    admin
+      .from("zkai_point_rules")
+      .insert(ZKAI_SUBJECTS.map((subject) => ({ family_id: family.id, subject, points: ZKAI_DEFAULT_POINTS[subject] }))),
   ]);
   if (setup.some((r) => r.error)) {
     await admin.from("families").delete().eq("id", family.id);

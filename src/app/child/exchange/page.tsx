@@ -1,5 +1,5 @@
-import { cancelExchange, markExchangeReceived, requestExchange } from "@/app/actions/exchange";
-import { ExchangeChecks, ExchangeStatus } from "@/components/ExchangeStatus";
+import { cancelExchange, requestExchange } from "@/app/actions/exchange";
+import { ExchangeStatus } from "@/components/ExchangeStatus";
 import { Flash, type SearchParams } from "@/components/Flash";
 import { LedgerList } from "@/components/LedgerList";
 import { requireChild } from "@/lib/auth";
@@ -29,7 +29,7 @@ export default async function ExchangePage({ searchParams }: { searchParams: Sea
         <h2 className="h2">ポイント交換を請求</h2>
         <p className="mb-1 text-3xl font-bold">{formatPoints(balance)}</p>
         <p className="mb-4 text-sm text-stone-500">
-          1pt＝1円。いまは {formatPoints(Math.max(0, available))} まで請求できます（受け渡し中の分を除く）
+          1pt＝1円。いまは {formatPoints(Math.max(0, available))} まで請求できます（渡し待ちの分を除く）
         </p>
         <form action={requestExchange} className="flex gap-2">
           <input
@@ -47,13 +47,13 @@ export default async function ExchangePage({ searchParams }: { searchParams: Sea
           </button>
         </form>
         <p className="mt-2 text-xs text-stone-500">
-          請求すると親に通知が届きます。親が「渡した」、あなたが「貰った」にチェックすると交換完了で、そのときにポイントが減ります。
+          請求すると親に通知が届きます。親が「渡した」にチェックした時点で交換完了になり、ポイントが減ります。
         </p>
       </section>
 
       {pending.length > 0 && (
         <section className="card mb-4">
-          <h2 className="h2">受け渡し中</h2>
+          <h2 className="h2">渡し待ち</h2>
           <ul className="space-y-3">
             {pending.map((r) => (
               <li key={r.id} className="rounded-xl bg-stone-50 p-3">
@@ -61,21 +61,13 @@ export default async function ExchangePage({ searchParams }: { searchParams: Sea
                   <span className="font-bold">{formatPoints(r.points)}</span>
                   <span className="text-xs text-stone-500">{formatJstDateTime(r.created_at)}に請求</span>
                 </p>
-                <ExchangeChecks
-                  request={r}
-                  receivedAction={
-                    <form action={markExchangeReceived}>
-                      <input type="hidden" name="request_id" value={r.id} />
-                      <button className="btn">⬜ 貰った</button>
-                    </form>
-                  }
-                />
-                {!r.given_at && (
-                  <form action={cancelExchange} className="mt-2 text-right">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm text-stone-500">親が渡すのを待っています</span>
+                  <form action={cancelExchange}>
                     <input type="hidden" name="request_id" value={r.id} />
                     <button className="text-xs text-stone-500 underline">請求を取り消す</button>
                   </form>
-                )}
+                </div>
               </li>
             ))}
           </ul>

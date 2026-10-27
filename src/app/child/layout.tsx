@@ -12,6 +12,7 @@ export default async function ChildLayout({ children }: { children: React.ReactN
     { href: "/child/history", label: "履歴" },
     { href: "/child/materials", label: "教材" },
     { href: "/child/tests", label: "テスト" },
+    { href: "/child/zkai", label: "Z会" },
     { href: "/child/exchange", label: "交換" },
     { href: "/child/notifications", label: "通知", badge: unread },
   ];

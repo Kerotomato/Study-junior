@@ -24,6 +24,7 @@ export default async function ParentLayout({ children }: { children: React.React
   const links = [
     { href: "/parent", label: "子ども一覧" },
     { href: "/parent/exchanges", label: "ポイント交換", badge: toGive ?? 0 },
+    { href: "/parent/zkai", label: "Z会" },
     { href: "/parent/notifications", label: "通知", badge: unread },
     { href: "/parent/rules", label: "ルール設定" },
     { href: "/parent/family", label: "家族・アカウント" },

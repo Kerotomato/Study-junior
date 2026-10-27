@@ -9,19 +9,33 @@ import { formatHours, formatPoints } from "@/lib/format";
 import { pageRange, taskLabel } from "@/lib/labels";
 import { childMaterials, childSummary, familyRules, familySubjects } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
+import { remainingThisMonth } from "@/lib/zkai";
+import { childCurrentGrade, zkaiChecks } from "@/lib/zkaiData";
+import Link from "next/link";
 import type { Task } from "@/lib/types";
 
 export default async function ChildHome({ searchParams }: { searchParams: SearchParams }) {
   const me = await requireChild();
   const supabase = await createClient();
   const today = todayJst();
-  const [summary, rules, subjects, materials, { data: taskRows }] = await Promise.all([
+  const [summary, rules, subjects, materials, { data: taskRows }, grade, checks] = await Promise.all([
     childSummary(supabase, me.id),
     familyRules(supabase, me.family_id),
     familySubjects(supabase, me.family_id),
     childMaterials(supabase, me.id),
     supabase.from("tasks").select("*").eq("child_id", me.id).lte("date", today).order("created_at"),
+    childCurrentGrade(supabase, me.id, today),
+    zkaiChecks(supabase, me.id),
   ]);
+  // 今の学年が表の範囲（1〜3年）のときだけ、今月のZ会の残りを出す
+  const zkaiLeft =
+    grade !== null && grade >= 1 && grade <= 3
+      ? remainingThisMonth(
+          checks.filter((c) => !c.revoked_at),
+          grade,
+          today,
+        ).length
+      : 0;
   const tasks = (taskRows ?? []) as Task[];
   const todays = tasks.filter((t) => t.date === today);
   const leftover = tasks.filter((t) => t.date < today && !t.done);
@@ -36,6 +50,12 @@ export default async function ChildHome({ searchParams }: { searchParams: Search
         <Stat label="連続日数" value={`${summary.streak}日`} />
         <Stat label="今日の学習時間" value={formatHours(summary.todayMinutes)} />
       </section>
+
+      {zkaiLeft > 0 && (
+        <Link href="/child/zkai" className="mb-3 block rounded-xl bg-white px-4 py-2 text-sm ring-1 ring-stone-200">
+          📘 Z会 今月あと<span className="font-bold">{zkaiLeft}教科</span>
+        </Link>
+      )}
 
       <section className="card mb-4">
         <h2 className="h2">今日のタスク</h2>

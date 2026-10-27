@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { updateLapPoints } from "@/app/actions/materials";
 import { deleteTestGoal } from "@/app/actions/tests";
 import { Flash, type SearchParams } from "@/components/Flash";
@@ -46,7 +47,12 @@ export default async function ChildDetailPage({
 
   return (
     <>
-      <h1 className="mb-3 text-xl font-bold">{child.name}</h1>
+      <div className="mb-3 flex items-center justify-between">
+        <h1 className="text-xl font-bold">{child.name}</h1>
+        <Link href={`/parent/zkai?child=${child.id}`} className="btn-sub">
+          📘 Z会を見る
+        </Link>
+      </div>
       <Flash searchParams={searchParams} />
 
       <section className="mb-4 grid grid-cols-3 gap-3">

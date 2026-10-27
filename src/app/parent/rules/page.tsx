@@ -1,8 +1,11 @@
 import { updateRules } from "@/app/actions/rules";
+import { updateZkaiPoints } from "@/app/actions/zkai";
 import { Flash, type SearchParams } from "@/components/Flash";
 import { requireParent } from "@/lib/auth";
 import { familyRules } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
+import { ZKAI_SUBJECTS } from "@/lib/zkai";
+import { zkaiPoints } from "@/lib/zkaiData";
 
 function NumberField({ name, label, unit, value, min = 0 }: { name: string; label: string; unit: string; value: number; min?: number }) {
   return (
@@ -20,7 +23,8 @@ function NumberField({ name, label, unit, value, min = 0 }: { name: string; labe
 
 export default async function RulesPage({ searchParams }: { searchParams: SearchParams }) {
   const me = await requireParent();
-  const rules = await familyRules(await createClient(), me.family_id);
+  const supabase = await createClient();
+  const [rules, zkai] = await Promise.all([familyRules(supabase, me.family_id), zkaiPoints(supabase, me.family_id)]);
 
   return (
     <>
@@ -36,16 +40,30 @@ export default async function RulesPage({ searchParams }: { searchParams: Search
             <NumberField name="streak_points" label="連続記録ボーナス" unit="pt" value={rules.streak_points} />
             <NumberField name="weekly_hours" label="週の目標（月〜日）" unit="時間以上" value={Math.round(rules.weekly_minutes / 60)} min={1} />
             <NumberField name="weekly_points" label="週の目標達成ボーナス" unit="pt" value={rules.weekly_points} />
-            <NumberField name="test_points" label="テスト目標の達成ボーナス" unit="pt" value={rules.test_points} />
           </div>
           <button className="btn w-full">保存する</button>
         </form>
         <p className="mt-3 text-xs text-stone-500">
-          テスト目標は子どもが自分で作り、達成するとここで決めた額が入ります（作ったときの額で固定）。
+          テスト目標とその達成ポイントは子どもが自分で決めます（子どもの詳細画面で確認・取り下げできます）。
           ワーク1周ボーナスは子どもごとの詳細画面で教材ごとに設定します。
         </p>
       </section>
 
+      <section className="card">
+        <h2 className="h2">Z会のポイント</h2>
+        <p className="mb-3 text-xs text-stone-500">
+          教科ごとに、1回分（1か月の1教科）のチェックでもらえるポイントです。子どもは変更できません。
+          変更は、これから付けるチェックから反映されます。
+        </p>
+        <form action={updateZkaiPoints} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {ZKAI_SUBJECTS.map((subject) => (
+              <NumberField key={subject} name={`zkai_${subject}`} label={subject} unit="pt" value={zkai[subject]} />
+            ))}
+          </div>
+          <button className="btn w-full">保存する</button>
+        </form>
+      </section>
     </>
   );
 }

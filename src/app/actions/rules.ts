@@ -14,7 +14,6 @@ export async function updateRules(form: FormData) {
     streak_days: int(form, "streak_days"),
     streak_points: int(form, "streak_points"),
     weekly_points: int(form, "weekly_points"),
-    test_points: int(form, "test_points"),
   };
   const weeklyHours = int(form, "weekly_hours");
   if (!Object.values(values).every(isNonNegInt) || !isNonNegInt(weeklyHours)) fail(back, "すべて0以上の整数で入力してください");
