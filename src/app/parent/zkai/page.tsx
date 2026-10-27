@@ -7,7 +7,7 @@ import { formatJstDateTime, todayJst, zkaiMonthLabel } from "@/lib/dates";
 import { familyChildren } from "@/lib/family";
 import { formatPoints } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
-import { ZKAI_MONTHS, ZKAI_SUBJECTS, pickGrade, remainingThisMonth, yearStartOfGrade, zkaiYearStart } from "@/lib/zkai";
+import { ZKAI_MONTHS, ZKAI_SUBJECTS, pickGrade, remainingThisMonth } from "@/lib/zkai";
 import { childCurrentGrade, zkaiChecks, zkaiPoints } from "@/lib/zkaiData";
 
 export default async function ParentZkaiPage({ searchParams }: { searchParams: SearchParams }) {
@@ -102,10 +102,8 @@ function ZkaiParentView({
         )}
         <ZkaiTable
           grade={grade}
-          yearStart={current === null ? zkaiYearStart(today) : yearStartOfGrade(grade, current, today)}
           checks={gradeChecks}
           points={points}
-          today={today}
           currentMonth={isCurrent || current === null ? Number(today.slice(5, 7)) : null}
           editable={false}
         />

@@ -4,7 +4,7 @@ import { zkaiMonthLabel } from "@/lib/dates";
 import { formatPoints } from "@/lib/format";
 import type { ZkaiCheck } from "@/lib/types";
 import { ScrollToCurrent } from "./ScrollToCurrent";
-import { ZKAI_MONTHS, ZKAI_SUBJECTS, isZkaiMonthOpen, type ZkaiSubject } from "@/lib/zkai";
+import { ZKAI_MONTHS, ZKAI_SUBJECTS, type ZkaiSubject } from "@/lib/zkai";
 
 /**
  * Z会チェックリストの表（行が教科、列が3月始まり〜翌2月）。
@@ -12,19 +12,15 @@ import { ZKAI_MONTHS, ZKAI_SUBJECTS, isZkaiMonthOpen, type ZkaiSubject } from "@
  */
 export function ZkaiTable({
   grade,
-  yearStart,
   checks,
   points,
-  today,
   currentMonth,
   editable,
 }: {
   grade: number;
-  yearStart: number;
   /** この学年のチェック（取り消し済みも含む） */
   checks: ZkaiCheck[];
   points: Record<ZkaiSubject, number>;
-  today: string;
   /** 今月の列を強調する（この表が今の年度のときだけ） */
   currentMonth: number | null;
   editable: boolean;
@@ -65,12 +61,11 @@ export function ZkaiTable({
                 const key = `${month}:${subject}`;
                 const checked = active.has(key);
                 const revoked = revokedByParent.get(key);
-                const open = isZkaiMonthOpen(yearStart, month, today);
                 const highlight = month === currentMonth ? "bg-amber-100" : "";
                 const label = `${grade}年 ${zkaiMonthLabel(month)} ${subject}`;
                 return (
                   <td key={month} className={`border-t border-stone-100 p-0.5 ${highlight}`}>
-                    {editable && open ? (
+                    {editable ? (
                       <form action={toggleZkaiCheck}>
                         <input type="hidden" name="grade" value={grade} />
                         <input type="hidden" name="month" value={month} />
@@ -86,10 +81,10 @@ export function ZkaiTable({
                       </form>
                     ) : (
                       <span
-                        className={`inline-flex h-9 w-9 items-center justify-center rounded-lg text-lg ${open ? "" : "bg-stone-100 text-stone-300"}`}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-lg"
                         title={revoked ? `取り消し：${revoked.revoke_reason}` : undefined}
                       >
-                        {checked ? "✅" : revoked ? <span className="text-xs text-red-600">取消</span> : open ? "⬜" : "－"}
+                        {checked ? "✅" : revoked ? <span className="text-xs text-red-600">取消</span> : "⬜"}
                       </span>
                     )}
                   </td>

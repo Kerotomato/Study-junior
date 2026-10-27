@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { currentZkaiGrade, pickGrade, isZkaiMonthOpen, remainingThisMonth, yearStartOfGrade, zkaiCalendarMonth, zkaiYearStart } from "./zkai";
+import { currentZkaiGrade, pickGrade, remainingThisMonth, yearStartOfGrade, zkaiYearStart } from "./zkai";
 
 describe("Z会 year", () => {
   it("starts in March", () => {
@@ -8,10 +8,6 @@ describe("Z会 year", () => {
     expect(zkaiYearStart("2027-02-28")).toBe(2026);
   });
 
-  it("maps January and February to the next calendar year", () => {
-    expect(zkaiCalendarMonth(2026, 4)).toEqual({ year: 2026, month: 4 });
-    expect(zkaiCalendarMonth(2026, 1)).toEqual({ year: 2027, month: 1 });
-  });
 });
 
 describe("grade", () => {
@@ -25,16 +21,6 @@ describe("grade", () => {
   it("finds the year of an earlier grade", () => {
     expect(yearStartOfGrade(1, 2, "2026-10-27")).toBe(2025);
     expect(yearStartOfGrade(2, 2, "2026-10-27")).toBe(2026);
-  });
-});
-
-describe("open months", () => {
-  it("allows months up to the current one", () => {
-    expect(isZkaiMonthOpen(2026, 10, "2026-10-27")).toBe(true);
-    expect(isZkaiMonthOpen(2026, 3, "2026-10-27")).toBe(true);
-    expect(isZkaiMonthOpen(2026, 11, "2026-10-27")).toBe(false);
-    expect(isZkaiMonthOpen(2026, 1, "2026-10-27")).toBe(false); // 2027年1月
-    expect(isZkaiMonthOpen(2025, 2, "2026-10-27")).toBe(true); // 前の学年の2月
   });
 });
 

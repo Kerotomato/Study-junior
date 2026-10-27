@@ -33,11 +33,6 @@ export function zkaiYearStart(date: string): number {
   return month >= 3 ? year : year - 1;
 }
 
-/** 年度と月から、実際の年・月を返す（1月・2月は翌年） */
-export function zkaiCalendarMonth(yearStart: number, month: number): { year: number; month: number } {
-  return { year: month >= 3 ? yearStart : yearStart + 1, month };
-}
-
 /**
  * いまの学年。親が設定した学年（grade）とそのときの年度（gradeYearStart）から、年度が進んだ分だけ上げる。
  * 未設定なら null。
@@ -50,14 +45,6 @@ export function currentZkaiGrade(grade: number | null, gradeYearStart: number | 
 /** その学年の表がどの年度か */
 export function yearStartOfGrade(grade: number, currentGrade: number, today: string): number {
   return zkaiYearStart(today) - (currentGrade - grade);
-}
-
-/** チェックできるマスか。未来の月（まだ届いていない号）はチェックできない */
-export function isZkaiMonthOpen(yearStart: number, month: number, today: string): boolean {
-  const { year, month: m } = zkaiCalendarMonth(yearStart, month);
-  const ty = Number(today.slice(0, 4));
-  const tm = Number(today.slice(5, 7));
-  return year < ty || (year === ty && m <= tm);
 }
 
 export interface ZkaiCellKey {

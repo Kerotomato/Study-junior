@@ -7,7 +7,7 @@ import { done, fail, int, isNonNegInt, str } from "@/lib/flash";
 import { formatPoints } from "@/lib/format";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ZkaiCheck } from "@/lib/types";
-import { ZKAI_GRADES, ZKAI_POINT_STEP, ZKAI_SUBJECTS, isZkaiMonthOpen, isZkaiSubject, yearStartOfGrade, zkaiYearStart } from "@/lib/zkai";
+import { ZKAI_GRADES, ZKAI_POINT_STEP, ZKAI_SUBJECTS, isZkaiSubject, yearStartOfGrade, zkaiYearStart } from "@/lib/zkai";
 import { childCurrentGrade, zkaiPoints } from "@/lib/zkaiData";
 
 /**
@@ -28,9 +28,8 @@ export async function toggleZkaiCheck(form: FormData) {
   const today = todayJst();
   const current = await childCurrentGrade(admin, me.id, today);
   if (current === null) fail(back, "学年が設定されていません。親に設定してもらってください");
-  if (grade > current) fail(back, "まだその学年ではありません");
+  // どの学年・どの月のマスもいつでもチェックできる（先の月や、まだなっていない学年も可）
   const yearStart = yearStartOfGrade(grade, current, today);
-  if (!isZkaiMonthOpen(yearStart, month, today)) fail(back, "まだ先の月はチェックできません");
   const label = `${grade}年 ${zkaiMonthLabel(month)} ${subject}`;
 
   const { data: active } = await admin
