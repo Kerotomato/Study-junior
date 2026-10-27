@@ -15,7 +15,7 @@
 ## セットアップ
 
 1. Supabase でプロジェクトを作成する
-2. `supabase/migrations/` の SQL を番号順に SQL Editor で実行する（または `supabase db push`）
+2. `supabase/migrations/` の SQL を番号順に実行する（手順は下の「データベースの更新手順」）
    - `0001_init.sql`：初期スキーマ
    - `0002_v1_1_changes.sql`：v1.1 の変更（既存データも引き継ぐ）
 3. `.env.example` を `.env.local` にコピーして値を入れる
@@ -31,6 +31,28 @@ npm run lint    # 型チェック
 ```
 
 Vercel では同じ環境変数を Project Settings > Environment Variables に設定します。
+
+## データベースの更新手順（Supabase の画面で行う）
+
+SQL ファイルは「どこかに置く」ものではなく、**中身をコピーして Supabase の SQL Editor に貼り付けて実行**します。
+
+1. いまの状態を確認する
+   1. [Supabase](https://supabase.com/dashboard) でプロジェクトを開き、左のメニューから **SQL Editor** を開く
+   2. 右上の **＋（New query）** で新しいクエリを作る
+   3. `supabase/check_schema.sql` の中身を全部コピーして貼り付け、**Run** を押す
+   4. 結果の表で、`0001_init.sql` と `0002_v1_1_changes.sql` がそれぞれ「実行済み」か「未実行」かを見る
+2. 「未実行」のファイルを番号の小さい順に実行する
+   1. GitHub でファイルを開き、右上のコピーボタン（Copy raw file）で中身を全部コピーする
+   2. SQL Editor で新しいクエリを作って貼り付け（前の内容は消しておく）、**Run** を押す
+   3. 「destructive operation（元に戻せない操作）」の確認が出たら、そのまま実行してよい（制約を作り直しているため）
+   4. 「Success. No rows returned」と出れば完了
+3. もう一度 `check_schema.sql` を実行し、両方「実行済み」になっていることを確かめる
+
+注意
+
+- `0001_init.sql` は**最初の1回だけ**実行する。もう一度実行すると「already exists」のエラーになる（データは壊れない）
+- `0002_v1_1_changes.sql` は何度実行しても大丈夫。途中で失敗しても何も変更されないので、エラーを直してからもう一度実行すればよい
+- 「relation "tasks" does not exist」と出たら、先に `0001_init.sql` を実行する
 
 ## 使い方
 
