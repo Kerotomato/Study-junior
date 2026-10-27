@@ -104,7 +104,16 @@ export function ZkaiTable({
 }
 
 /** 学年の切り替えタブ */
-export function GradeTabs({ selected, current, href }: { selected: number; current: number; href: (grade: number) => string }) {
+export function GradeTabs({
+  selected,
+  current,
+  href,
+}: {
+  selected: number;
+  /** 今の学年。未設定なら null（「（今）」を出さない） */
+  current: number | null;
+  href: (grade: number) => string;
+}) {
   return (
     <div className="mb-3 flex gap-2" role="tablist">
       {[1, 2, 3].map((g) => (

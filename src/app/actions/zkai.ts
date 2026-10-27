@@ -7,7 +7,7 @@ import { done, fail, int, isNonNegInt, str } from "@/lib/flash";
 import { formatPoints } from "@/lib/format";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ZkaiCheck } from "@/lib/types";
-import { ZKAI_GRADES, ZKAI_SUBJECTS, isZkaiMonthOpen, isZkaiSubject, yearStartOfGrade, zkaiYearStart } from "@/lib/zkai";
+import { ZKAI_GRADES, ZKAI_POINT_STEP, ZKAI_SUBJECTS, isZkaiMonthOpen, isZkaiSubject, yearStartOfGrade, zkaiYearStart } from "@/lib/zkai";
 import { childCurrentGrade, zkaiPoints } from "@/lib/zkaiData";
 
 /**
@@ -108,7 +108,9 @@ export async function updateZkaiPoints(form: FormData) {
   const me = await requireParent();
   const back = "/parent/rules";
   const rows = ZKAI_SUBJECTS.map((subject) => ({ family_id: me.family_id, subject, points: int(form, `zkai_${subject}`) }));
-  if (!rows.every((r) => isNonNegInt(r.points))) fail(back, "Z会のポイントは0以上の整数で入力してください");
+  if (!rows.every((r) => isNonNegInt(r.points) && r.points % ZKAI_POINT_STEP === 0)) {
+    fail(back, `Z会のポイントは0以上で、${ZKAI_POINT_STEP}pt単位で入力してください`);
+  }
   const { error } = await createAdminClient().from("zkai_point_rules").upsert(rows, { onConflict: "family_id,subject" });
   if (error) throw error;
   done(back, "Z会のポイントを保存しました（これから付けるチェックから反映されます）");

@@ -7,7 +7,7 @@ import { formatJstDateTime, todayJst, zkaiMonthLabel } from "@/lib/dates";
 import { familyChildren } from "@/lib/family";
 import { formatPoints } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
-import { ZKAI_MONTHS, ZKAI_SUBJECTS, pickGrade, remainingThisMonth, yearStartOfGrade } from "@/lib/zkai";
+import { ZKAI_MONTHS, ZKAI_SUBJECTS, pickGrade, remainingThisMonth, yearStartOfGrade, zkaiYearStart } from "@/lib/zkai";
 import { childCurrentGrade, zkaiChecks, zkaiPoints } from "@/lib/zkaiData";
 
 export default async function ParentZkaiPage({ searchParams }: { searchParams: SearchParams }) {
@@ -42,25 +42,15 @@ export default async function ParentZkaiPage({ searchParams }: { searchParams: S
           ))}
         </div>
       )}
-      {current === null ? (
-        <section className="card text-sm">
-          <h2 className="h2">{child.name}さんのZ会</h2>
-          <p className="mb-3">学年がまだ設定されていません。</p>
-          <Link className="btn" href="/parent/family">
-            学年を設定する
-          </Link>
-        </section>
-      ) : (
-        <ZkaiParentView
-          childId={child.id}
-          childName={child.name}
-          current={current}
-          grade={pickGrade(params.grade, current)}
-          checks={checks}
-          points={points}
-          today={today}
-        />
-      )}
+      <ZkaiParentView
+        childId={child.id}
+        childName={child.name}
+        current={current}
+        grade={pickGrade(params.grade, current ?? 1)}
+        checks={checks}
+        points={points}
+        today={today}
+      />
     </>
   );
 }
@@ -76,7 +66,8 @@ function ZkaiParentView({
 }: {
   childId: string;
   childName: string;
-  current: number;
+  /** 今の学年。未設定なら null（表は見られる） */
+  current: number | null;
   grade: number;
   checks: Awaited<ReturnType<typeof zkaiChecks>>;
   points: Awaited<ReturnType<typeof zkaiPoints>>;
@@ -98,14 +89,24 @@ function ZkaiParentView({
       <section className="card mb-4">
         <h2 className="h2">{childName}さんのZ会</h2>
         <GradeTabs selected={grade} current={current} href={(g) => `/parent/zkai?child=${childId}&grade=${g}`} />
-        {isCurrent && <ZkaiProgress remaining={remainingThisMonth(checks.filter((c) => !c.revoked_at), current, today).length} />}
+        {current === null && (
+          <p className="mb-3 rounded-xl bg-amber-100 p-3 text-sm">
+            学年がまだ設定されていないため、子どもはチェックできません。
+            <Link className="ml-1 font-bold text-brand-dark underline" href="/parent/family">
+              学年を設定する
+            </Link>
+          </p>
+        )}
+        {current !== null && isCurrent && (
+          <ZkaiProgress remaining={remainingThisMonth(checks.filter((c) => !c.revoked_at), current, today).length} />
+        )}
         <ZkaiTable
           grade={grade}
-          yearStart={yearStartOfGrade(grade, current, today)}
+          yearStart={current === null ? zkaiYearStart(today) : yearStartOfGrade(grade, current, today)}
           checks={gradeChecks}
           points={points}
           today={today}
-          currentMonth={isCurrent ? Number(today.slice(5, 7)) : null}
+          currentMonth={isCurrent || current === null ? Number(today.slice(5, 7)) : null}
           editable={false}
         />
         <p className="mt-3 text-xs text-stone-500">チェックは子どもが付けます。ポイントは「ルール設定」で教科ごとに決められます。</p>

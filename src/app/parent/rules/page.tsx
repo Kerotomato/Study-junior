@@ -4,17 +4,32 @@ import { Flash, type SearchParams } from "@/components/Flash";
 import { requireParent } from "@/lib/auth";
 import { familyRules } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
-import { ZKAI_SUBJECTS } from "@/lib/zkai";
+import { ZKAI_POINT_STEP, ZKAI_SUBJECTS } from "@/lib/zkai";
 import { zkaiPoints } from "@/lib/zkaiData";
 
-function NumberField({ name, label, unit, value, min = 0 }: { name: string; label: string; unit: string; value: number; min?: number }) {
+function NumberField({
+  name,
+  label,
+  unit,
+  value,
+  min = 0,
+  step = 1,
+}: {
+  name: string;
+  label: string;
+  unit: string;
+  value: number;
+  min?: number;
+  /** 矢印で増減する幅。入力できるのもこの倍数だけになる */
+  step?: number;
+}) {
   return (
     <div>
       <label className="label" htmlFor={name}>
         {label}
       </label>
       <div className="flex items-center gap-2">
-        <input className="input" id={name} name={name} type="number" min={min} defaultValue={value} required />
+        <input className="input" id={name} name={name} type="number" min={min} step={step} defaultValue={value} required />
         <span className="shrink-0 text-sm">{unit}</span>
       </div>
     </div>
@@ -52,13 +67,21 @@ export default async function RulesPage({ searchParams }: { searchParams: Search
       <section className="card">
         <h2 className="h2">Z会のポイント</h2>
         <p className="mb-3 text-xs text-stone-500">
-          教科ごとに、1回分（1か月の1教科）のチェックでもらえるポイントです。子どもは変更できません。
+          教科ごとに、1回分（1か月の1教科）のチェックでもらえるポイントです。{ZKAI_POINT_STEP}pt単位で設定します。子どもは変更できません。
           変更は、これから付けるチェックから反映されます。
         </p>
         <form action={updateZkaiPoints} className="space-y-4">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {ZKAI_SUBJECTS.map((subject) => (
-              <NumberField key={subject} name={`zkai_${subject}`} label={subject} unit="pt" value={zkai[subject]} />
+              <NumberField
+                key={subject}
+                name={`zkai_${subject}`}
+                label={subject}
+                unit="pt"
+                // 以前に50の倍数以外で保存した値は、近い50の倍数で表示する（そのままだとブラウザが保存を止めるため）
+                value={Math.round(zkai[subject] / ZKAI_POINT_STEP) * ZKAI_POINT_STEP}
+                step={ZKAI_POINT_STEP}
+              />
             ))}
           </div>
           <button className="btn w-full">保存する</button>

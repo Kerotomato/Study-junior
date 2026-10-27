@@ -9,6 +9,9 @@ export const ZKAI_MONTHS = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2] as const;
 
 export const ZKAI_GRADES = [1, 2, 3] as const;
 
+/** 親が設定する1回分のポイントの単位（50pt ずつ増減） */
+export const ZKAI_POINT_STEP = 50;
+
 /** 親がまだ設定していないときの1回分のポイント */
 export const ZKAI_DEFAULT_POINTS: Record<ZkaiSubject, number> = {
   国語: 300,
