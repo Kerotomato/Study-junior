@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 export function NavLinks({ links }: { links: { href: string; label: string; badge?: number }[] }) {
   const pathname = usePathname();
   return (
-    <nav className="flex gap-1 overflow-x-auto px-2 pb-2">
+    <nav className="flex flex-wrap gap-1 px-2 pb-2">
       {links.map((l) => {
         const active = l.href === pathname || (l.href.split("/").length > 2 && pathname.startsWith(l.href));
         return (
