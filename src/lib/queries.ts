@@ -2,13 +2,14 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, jstMidnightIso, monthStart, todayJst, weekEnd, weekStart } from "./dates";
 import { currentStreak } from "./points";
-import type { LedgerEntry, Material, Rules, Subject } from "./types";
+import type { LedgerEntry, Material, Notification, Rules, Subject } from "./types";
 
 export interface ChildSummary {
   balance: number;
   /** 今月増えたポイント（交換での消費は含めない） */
   monthPoints: number;
   streak: number;
+  todayMinutes: number;
   weekMinutes: number;
 }
 
@@ -40,6 +41,7 @@ export async function childSummary(client: SupabaseClient, childId: string): Pro
       rows.map((r) => r.study_date),
       today,
     ),
+    todayMinutes: rows.filter((r) => r.study_date === today).reduce((s, r) => s + r.minutes, 0),
     weekMinutes: rows.filter((r) => r.study_date >= ws && r.study_date <= we).reduce((s, r) => s + r.minutes, 0),
   };
 }
@@ -70,4 +72,15 @@ export async function unreadCount(client: SupabaseClient, userId: string): Promi
     .eq("read", false);
   if (error) throw error;
   return count ?? 0;
+}
+
+export async function recentNotifications(client: SupabaseClient, userId: string): Promise<Notification[]> {
+  const { data, error } = await client
+    .from("notifications")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return (data ?? []) as Notification[];
 }

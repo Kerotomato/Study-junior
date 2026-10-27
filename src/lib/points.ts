@@ -95,3 +95,11 @@ export function meetsTestGoal(
 export function describeTestGoal(goal: Pick<TestGoal, "condition_type" | "min_score">): string {
   return goal.condition_type === "min_score" ? `${goal.min_score}点以上` : "合格";
 }
+
+/**
+ * 記録を編集したときのポイント。保存時のレート（points ÷ minutes）を使い、
+ * あとからルールのレートが変わっても、その日の記録の単価は変えない。
+ */
+export function recalcStudyPoints(log: { points: number; minutes: number }, newMinutes: number): number {
+  return Math.round((log.points / log.minutes) * newMinutes);
+}

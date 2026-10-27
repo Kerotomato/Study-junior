@@ -1,7 +1,7 @@
 "use server";
 
-import { addLedger, notify } from "@/lib/awards";
-import { requireChild, requireChildOfFamily, requireParent } from "@/lib/auth";
+import { addLedger, getRules, notify } from "@/lib/awards";
+import { requireChild, requireChildOfFamily, requireProfile } from "@/lib/auth";
 import { done, fail, int, isNonNegInt, str } from "@/lib/flash";
 import { meetsTestGoal } from "@/lib/points";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -39,39 +39,52 @@ export async function submitTestResult(form: FormData) {
   done(back, `目標達成！ +${goal.points}pt`);
 }
 
-/** 親がテスト目標を登録する（例：80点以上、英検合格） */
+/**
+ * 子どもがテスト目標を作る（例：80点以上、英検合格）。
+ * 達成ポイントは子どもが決めず、親がルールで決めた額を作成時に目標へ記録する。
+ */
 export async function createTestGoal(form: FormData) {
-  const me = await requireParent();
-  const back = "/parent/rules";
-  const child = await requireChildOfFamily(me, str(form, "child_id"));
+  const me = await requireChild();
+  const back = "/child/tests";
   const name = str(form, "name");
   const conditionType = str(form, "condition_type") === "pass" ? "pass" : "min_score";
   const minScore = int(form, "min_score");
-  const points = int(form, "points");
   if (!name) fail(back, "目標の名前を入力してください");
   if (conditionType === "min_score" && !isNonNegInt(minScore)) fail(back, "目標の点数を入力してください");
-  if (!isNonNegInt(points)) fail(back, "ポイントは0以上で入力してください");
 
-  const { error } = await createAdminClient().from("test_goals").insert({
-    child_id: child.id,
+  const admin = createAdminClient();
+  const rules = await getRules(admin, me.family_id);
+  const { error } = await admin.from("test_goals").insert({
+    child_id: me.id,
     name,
     condition_type: conditionType,
     min_score: conditionType === "min_score" ? minScore : null,
-    points,
+    points: rules.test_points,
+    created_by: me.id,
   });
   if (error) throw error;
   done(back, "テスト目標を追加しました");
 }
 
-/** 未達成のテスト目標を取り下げる */
+/** 未達成のテスト目標を取り下げる（本人、または同じ家族の親） */
 export async function deleteTestGoal(form: FormData) {
-  const me = await requireParent();
-  const back = "/parent/rules";
+  const me = await requireProfile();
   const admin = createAdminClient();
   const { data } = await admin.from("test_goals").select("child_id").eq("id", str(form, "goal_id")).maybeSingle();
-  if (!data) fail(back, "目標が見つかりません");
-  await requireChildOfFamily(me, data.child_id as string);
-  const { error } = await admin.from("test_goals").delete().eq("id", str(form, "goal_id")).is("achieved_at", null);
+  const back = me.role === "child" ? "/child/tests" : `/parent/children/${data?.child_id ?? ""}`;
+  if (!data) fail(me.role === "child" ? back : "/parent", "目標が見つかりません");
+  if (me.role === "child") {
+    if (data.child_id !== me.id) fail(back, "目標が見つかりません");
+  } else {
+    await requireChildOfFamily(me, data.child_id as string);
+  }
+  const { data: deleted, error } = await admin
+    .from("test_goals")
+    .delete()
+    .eq("id", str(form, "goal_id"))
+    .is("achieved_at", null)
+    .select("id");
   if (error) throw error;
+  if (!deleted?.length) fail(back, "達成済みの目標は取り下げられません");
   done(back, "テスト目標を取り下げました");
 }

@@ -1,11 +1,13 @@
 import { saveStudyLog } from "@/app/actions/study";
 import { Flash, type SearchParams } from "@/components/Flash";
+import { MemoField } from "@/components/MemoField";
+import { SubjectMaterialFields } from "@/components/SubjectMaterialFields";
 import { requireChild } from "@/lib/auth";
 import { todayJst } from "@/lib/dates";
 import { MAX_DAILY_MINUTES } from "@/lib/points";
 import { childMaterials, familySubjects } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
-import { StudyFields, Timer } from "./Timer";
+import { Timer } from "./Timer";
 
 export default async function RecordPage({ searchParams }: { searchParams: SearchParams }) {
   const me = await requireChild();
@@ -35,7 +37,8 @@ export default async function RecordPage({ searchParams }: { searchParams: Searc
               <input className="input" id="minutes" name="minutes" type="number" min={1} max={MAX_DAILY_MINUTES} required />
             </div>
           </div>
-          <StudyFields subjects={subjects} materials={materials} idPrefix="manual" />
+          <SubjectMaterialFields subjects={subjects} materials={materials} idPrefix="manual" subjectRequired />
+          <MemoField idPrefix="manual" />
           <button className="btn w-full">保存する</button>
         </form>
         <p className="mt-3 text-xs text-stone-500">保存するとすぐにポイントが入ります。1日の記録は合計23時間までです。</p>

@@ -1,16 +1,18 @@
-import { submitTestResult } from "@/app/actions/tests";
+import { createTestGoal, deleteTestGoal, submitTestResult } from "@/app/actions/tests";
 import { Flash, type SearchParams } from "@/components/Flash";
 import { requireChild } from "@/lib/auth";
 import { formatJstDateTime } from "@/lib/dates";
 import { formatPoints } from "@/lib/format";
 import { describeTestGoal } from "@/lib/points";
+import { familyRules } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 import type { TestGoal, TestResult } from "@/lib/types";
 
 export default async function TestsPage({ searchParams }: { searchParams: SearchParams }) {
   const me = await requireChild();
   const supabase = await createClient();
-  const [{ data: goalRows }, { data: resultRows }] = await Promise.all([
+  const [rules, { data: goalRows }, { data: resultRows }] = await Promise.all([
+    familyRules(supabase, me.family_id),
     supabase.from("test_goals").select("*").eq("child_id", me.id).order("created_at"),
     supabase.from("test_results").select("*").eq("child_id", me.id).order("created_at", { ascending: false }).limit(30),
   ]);
@@ -25,7 +27,7 @@ export default async function TestsPage({ searchParams }: { searchParams: Search
       <Flash searchParams={searchParams} />
       <section className="card mb-4">
         <h2 className="h2">テスト結果を入力</h2>
-        {open.length === 0 && <p className="text-sm text-stone-500">いま挑戦中の目標はありません。目標は親が登録します。</p>}
+        {open.length === 0 && <p className="text-sm text-stone-500">いま挑戦中の目標はありません。下で目標を作りましょう。</p>}
         <ul className="space-y-3">
           {open.map((g) => (
             <li key={g.id} className="rounded-xl bg-stone-50 p-3">
@@ -47,9 +49,29 @@ export default async function TestsPage({ searchParams }: { searchParams: Search
                 )}
                 <button className="btn shrink-0">送信</button>
               </form>
+              <form action={deleteTestGoal} className="mt-2 text-right">
+                <input type="hidden" name="goal_id" value={g.id} />
+                <button className="text-xs text-stone-500 underline">この目標を取り下げる</button>
+              </form>
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="card mb-4">
+        <h2 className="h2">目標を作る</h2>
+        <form action={createTestGoal} className="space-y-2">
+          <input className="input" name="name" placeholder="例：2学期期末 数学、英検3級" aria-label="目標の名前" required />
+          <div className="grid grid-cols-2 gap-2">
+            <select className="input" name="condition_type" defaultValue="min_score" aria-label="条件">
+              <option value="min_score">点数が○点以上</option>
+              <option value="pass">合格したら</option>
+            </select>
+            <input className="input" name="min_score" type="number" min={0} placeholder="目標点（点数の場合）" aria-label="目標点" />
+          </div>
+          <button className="btn w-full">目標を追加</button>
+        </form>
+        <p className="mt-2 text-xs text-stone-500">達成すると +{formatPoints(rules.test_points)}（親がルールで決めた額）</p>
       </section>
 
       {achieved.length > 0 && (
