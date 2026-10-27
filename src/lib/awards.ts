@@ -26,6 +26,22 @@ export async function notify(admin: SupabaseClient, userId: string, type: Notifi
   if (error) throw error;
 }
 
+/** 家族の親全員に通知する（exceptId の親は除く） */
+export async function notifyParents(
+  admin: SupabaseClient,
+  familyId: string,
+  type: Notification["type"],
+  message: string,
+  exceptId?: string,
+) {
+  const { data, error } = await admin.from("users").select("id").eq("family_id", familyId).eq("role", "parent");
+  if (error) throw error;
+  const rows = (data ?? []).filter((p) => p.id !== exceptId).map((p) => ({ user_id: p.id, type, message }));
+  if (rows.length === 0) return;
+  const { error: insertError } = await admin.from("notifications").insert(rows);
+  if (insertError) throw insertError;
+}
+
 export async function getRules(admin: SupabaseClient, familyId: string): Promise<Rules> {
   const { data, error } = await admin.from("rules").select("*").eq("family_id", familyId).single();
   if (error) throw error;
@@ -38,7 +54,7 @@ export async function balanceOf(client: SupabaseClient, childId: string): Promis
   return (data ?? []).reduce((sum, r) => sum + (r.amount as number), 0);
 }
 
-/** 承認待ちの申請を差し引いた、まだ申請できるポイント */
+/** 完了していない交換の請求を差し引いた、まだ請求できるポイント */
 export async function availablePoints(client: SupabaseClient, childId: string): Promise<number> {
   const balance = await balanceOf(client, childId);
   const { data, error } = await client.from("exchange_requests").select("points").eq("child_id", childId).eq("status", "pending");

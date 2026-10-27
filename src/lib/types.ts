@@ -36,8 +36,12 @@ export interface StudyLog {
   method: "timer" | "manual";
   pages_to: number | null;
   points: number;
+  memo: string | null;
   created_at: string;
+  edited_at: string | null;
   deleted_at: string | null;
+  /** 取り消された理由：deleted（親が削除）／rejected（親が手入力記録を却下） */
+  removed_as: "deleted" | "rejected" | null;
   delete_reason: string | null;
   deleted_by: string | null;
 }
@@ -46,8 +50,11 @@ export interface Task {
   id: string;
   child_id: string;
   date: string;
-  title: string;
+  /** 空なら教材・ページ範囲や科目から表示名を作る（taskLabel） */
+  title: string | null;
+  subject_id: string | null;
   material_id: string | null;
+  pages_from: number | null;
   pages_to: number | null;
   done: boolean;
   created_by: string;
@@ -61,6 +68,7 @@ export interface TestGoal {
   min_score: number | null;
   points: number;
   achieved_at: string | null;
+  created_by: string | null;
 }
 
 export interface TestResult {
@@ -80,9 +88,11 @@ export interface Rules {
   streak_points: number;
   weekly_minutes: number;
   weekly_points: number;
+  /** 子どもが作るテスト目標の達成ポイント */
+  test_points: number;
 }
 
-export type LedgerKind = "study" | "test" | "streak" | "weekly" | "lap" | "exchange" | "revoke";
+export type LedgerKind = "study" | "adjust" | "test" | "streak" | "weekly" | "lap" | "exchange" | "revoke";
 
 export interface LedgerEntry {
   id: string;
@@ -94,21 +104,33 @@ export interface LedgerEntry {
   created_at: string;
 }
 
+/** 交換は「渡した（親）」「貰った（子ども）」の両方にチェックが入ると完了し、そのときにポイントを消費する */
 export interface ExchangeRequest {
   id: string;
   child_id: string;
   points: number;
-  status: "pending" | "approved" | "rejected";
-  reviewed_by: string | null;
-  reason: string | null;
+  status: "pending" | "completed" | "cancelled";
   created_at: string;
-  reviewed_at: string | null;
+  given_at: string | null;
+  given_by: string | null;
+  received_at: string | null;
+  completed_at: string | null;
+  cancelled_at: string | null;
 }
 
 export interface Notification {
   id: string;
   user_id: string;
-  type: "log_deleted" | "exchange_approved" | "exchange_rejected" | "bonus";
+  type:
+    | "log_deleted"
+    | "log_rejected"
+    | "exchange_requested"
+    | "exchange_given"
+    | "exchange_completed"
+    | "exchange_cancelled"
+    | "exchange_approved"
+    | "exchange_rejected"
+    | "bonus";
   message: string;
   read: boolean;
   created_at: string;
@@ -116,6 +138,7 @@ export interface Notification {
 
 export const LEDGER_KIND_LABEL: Record<LedgerKind, string> = {
   study: "勉強",
+  adjust: "記録の修正",
   test: "テスト",
   streak: "連続記録ボーナス",
   weekly: "週の目標達成",

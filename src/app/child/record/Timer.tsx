@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { saveStudyLog } from "@/app/actions/study";
+import { MemoField } from "@/components/MemoField";
+import { SubjectMaterialFields } from "@/components/SubjectMaterialFields";
 import type { Material, Subject } from "@/lib/types";
 
 const STORAGE_KEY = "study-timer";
@@ -138,7 +140,8 @@ export function Timer({ subjects, materials }: { subjects: Subject[]; materials:
           <p className="text-center text-sm">
             {minutes < 1 ? "1分未満のため保存できません" : `${minutes}分を記録します`}
           </p>
-          <StudyFields subjects={subjects} materials={materials} idPrefix="timer" />
+          <SubjectMaterialFields subjects={subjects} materials={materials} idPrefix="timer" subjectRequired />
+          <MemoField idPrefix="timer" />
           <div className="flex gap-2">
             <button type="button" className="btn-sub flex-1" onClick={discard}>
               記録しない
@@ -150,45 +153,5 @@ export function Timer({ subjects, materials }: { subjects: Subject[]; materials:
         </form>
       )}
     </div>
-  );
-}
-
-/** 科目・教材・ページの入力欄（タイマーと手入力で共通） */
-export function StudyFields({ subjects, materials, idPrefix }: { subjects: Subject[]; materials: Material[]; idPrefix: string }) {
-  return (
-    <>
-      <div>
-        <label className="label" htmlFor={`${idPrefix}-subject_id`}>科目</label>
-        <select className="input" id={`${idPrefix}-subject_id`} name="subject_id" required defaultValue="">
-          <option value="" disabled>
-            選んでください
-          </option>
-          {subjects.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      {materials.length > 0 && (
-        <div className="grid grid-cols-[1fr_8rem] gap-2">
-          <div>
-            <label className="label" htmlFor={`${idPrefix}-material_id`}>教材（任意）</label>
-            <select className="input" id={`${idPrefix}-material_id`} name="material_id" defaultValue="">
-              <option value="">なし</option>
-              {materials.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}（いま p.{m.current_page}）
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="label" htmlFor={`${idPrefix}-pages_to`}>何ページまで</label>
-            <input className="input" id={`${idPrefix}-pages_to`} name="pages_to" inputMode="numeric" pattern="\d*" />
-          </div>
-        </div>
-      )}
-    </>
   );
 }
