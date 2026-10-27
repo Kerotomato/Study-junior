@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { currentZkaiGrade, pickGrade, remainingThisMonth, yearStartOfGrade, zkaiYearStart } from "./zkai";
+import { ZKAI_DEFAULT_POINTS, currentZkaiGrade, pickGrade, remainingThisMonth, yearStartOfGrade, zkaiRows, zkaiYearStart } from "./zkai";
 
 describe("Z会 year", () => {
   it("starts in March", () => {
@@ -24,14 +24,23 @@ describe("grade", () => {
   });
 });
 
-describe("remaining this month", () => {
-  it("lists unchecked subjects of the current grade and month", () => {
+describe("rows", () => {
+  const rows = zkaiRows(ZKAI_DEFAULT_POINTS, [{ id: "i1", name: "プラス 数学", points: 200 }]);
+
+  it("puts added materials after the six subjects", () => {
+    expect(rows.map((r) => r.label)).toEqual(["国語", "数学", "理科", "社会", "英語", "作文", "プラス 数学"]);
+    expect(rows[6]).toMatchObject({ key: "item:i1", points: 200, subject: null, itemId: "i1" });
+  });
+
+  it("lists unchecked rows of the current grade and month", () => {
     const checks = [
-      { grade: 1, month: 10, subject: "国語" },
-      { grade: 1, month: 10, subject: "数学" },
-      { grade: 1, month: 9, subject: "英語" },
+      { grade: 1, month: 10, subject: "国語", item_id: null },
+      { grade: 1, month: 10, subject: "数学", item_id: null },
+      { grade: 1, month: 10, subject: null, item_id: "i1" },
+      { grade: 1, month: 9, subject: "英語", item_id: null },
+      { grade: 2, month: 10, subject: "理科", item_id: null },
     ];
-    expect(remainingThisMonth(checks, 1, "2026-10-27")).toEqual(["理科", "社会", "英語", "作文"]);
+    expect(remainingThisMonth(checks, rows, 1, "2026-10-27").map((r) => r.label)).toEqual(["理科", "社会", "英語", "作文"]);
   });
 });
 

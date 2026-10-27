@@ -9,7 +9,7 @@ export const ZKAI_MONTHS = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2] as const;
 
 export const ZKAI_GRADES = [1, 2, 3] as const;
 
-/** 親が設定する1回分のポイントの単位（50pt ずつ増減） */
+/** 親が設定する1回分のポイントの単位（50pt ずつ増減）。追加した教材のポイントも同じ */
 export const ZKAI_POINT_STEP = 50;
 
 /** 親がまだ設定していないときの1回分のポイント */
@@ -47,17 +47,45 @@ export function yearStartOfGrade(grade: number, currentGrade: number, today: str
   return zkaiYearStart(today) - (currentGrade - grade);
 }
 
-export interface ZkaiCellKey {
-  grade: number;
-  month: number;
-  subject: string;
+/**
+ * 表の1行。6教科（subject）か、親が子どもごとに追加した教材（itemId）のどちらか。
+ * key はチェックとマスを結びつけるのに使う（教科名、または "item:<id>"）。
+ */
+export interface ZkaiRow {
+  key: string;
+  label: string;
+  points: number;
+  subject: ZkaiSubject | null;
+  itemId: string | null;
 }
 
-/** 今月まだチェックしていない教科 */
-export function remainingThisMonth(activeChecks: ZkaiCellKey[], currentGrade: number, today: string): ZkaiSubject[] {
+export function zkaiRowKey(check: { subject: string | null; item_id: string | null }): string {
+  return check.subject ?? `item:${check.item_id}`;
+}
+
+/** 表の行：6教科のあとに、追加した教材を登録順に並べる */
+export function zkaiRows(
+  points: Record<ZkaiSubject, number>,
+  items: { id: string; name: string; points: number }[],
+): ZkaiRow[] {
+  return [
+    ...ZKAI_SUBJECTS.map((subject) => ({ key: subject, label: subject, points: points[subject], subject, itemId: null })),
+    ...items.map((item) => ({ key: `item:${item.id}`, label: item.name, points: item.points, subject: null, itemId: item.id })),
+  ];
+}
+
+export interface ZkaiCellCheck {
+  grade: number;
+  month: number;
+  subject: string | null;
+  item_id: string | null;
+}
+
+/** 今月まだチェックしていない行（教科・教材） */
+export function remainingThisMonth(activeChecks: ZkaiCellCheck[], rows: ZkaiRow[], currentGrade: number, today: string): ZkaiRow[] {
   const month = Number(today.slice(5, 7));
-  const done = new Set(activeChecks.filter((c) => c.grade === currentGrade && c.month === month).map((c) => c.subject));
-  return ZKAI_SUBJECTS.filter((s) => !done.has(s));
+  const done = new Set(activeChecks.filter((c) => c.grade === currentGrade && c.month === month).map(zkaiRowKey));
+  return rows.filter((r) => !done.has(r.key));
 }
 
 /** 表示する学年。URL で選ばれていればそれ、なければ今の学年（表は1〜3年なので範囲に収める） */

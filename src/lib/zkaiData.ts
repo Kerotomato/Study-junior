@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { todayJst } from "./dates";
-import type { ChildGrade, ZkaiCheck } from "./types";
+import type { ChildGrade, ZkaiCheck, ZkaiItem } from "./types";
 import { ZKAI_DEFAULT_POINTS, ZKAI_SUBJECTS, currentZkaiGrade, type ZkaiSubject } from "./zkai";
 
 export async function childGrade(client: SupabaseClient, childId: string): Promise<ChildGrade> {
@@ -36,4 +36,11 @@ export async function zkaiPoints(client: SupabaseClient, familyId: string): Prom
     if ((ZKAI_SUBJECTS as readonly string[]).includes(row.subject)) points[row.subject as ZkaiSubject] = row.points as number;
   }
   return points;
+}
+
+/** 親が追加した教材（表から外したものも含む。登録順） */
+export async function zkaiItems(client: SupabaseClient, childId: string): Promise<ZkaiItem[]> {
+  const { data, error } = await client.from("zkai_items").select("*").eq("child_id", childId).order("created_at");
+  if (error) throw error;
+  return (data ?? []) as ZkaiItem[];
 }

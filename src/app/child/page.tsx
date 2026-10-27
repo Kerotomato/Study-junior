@@ -9,8 +9,8 @@ import { formatHours, formatPoints } from "@/lib/format";
 import { pageRange, taskLabel } from "@/lib/labels";
 import { childMaterials, childSummary, familyRules, familySubjects } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
-import { remainingThisMonth } from "@/lib/zkai";
-import { childCurrentGrade, zkaiChecks } from "@/lib/zkaiData";
+import { remainingThisMonth, zkaiRows } from "@/lib/zkai";
+import { childCurrentGrade, zkaiChecks, zkaiItems, zkaiPoints } from "@/lib/zkaiData";
 import Link from "next/link";
 import type { Task } from "@/lib/types";
 
@@ -18,7 +18,7 @@ export default async function ChildHome({ searchParams }: { searchParams: Search
   const me = await requireChild();
   const supabase = await createClient();
   const today = todayJst();
-  const [summary, rules, subjects, materials, { data: taskRows }, grade, checks] = await Promise.all([
+  const [summary, rules, subjects, materials, { data: taskRows }, grade, checks, zkaiPointRules, items] = await Promise.all([
     childSummary(supabase, me.id),
     familyRules(supabase, me.family_id),
     familySubjects(supabase, me.family_id),
@@ -26,12 +26,18 @@ export default async function ChildHome({ searchParams }: { searchParams: Search
     supabase.from("tasks").select("*").eq("child_id", me.id).lte("date", today).order("created_at"),
     childCurrentGrade(supabase, me.id, today),
     zkaiChecks(supabase, me.id),
+    zkaiPoints(supabase, me.family_id),
+    zkaiItems(supabase, me.id),
   ]);
   // 今の学年が表の範囲（1〜3年）のときだけ、今月のZ会の残りを出す
   const zkaiLeft =
     grade !== null && grade >= 1 && grade <= 3
       ? remainingThisMonth(
           checks.filter((c) => !c.revoked_at),
+          zkaiRows(
+            zkaiPointRules,
+            items.filter((i) => !i.archived_at),
+          ),
           grade,
           today,
         ).length

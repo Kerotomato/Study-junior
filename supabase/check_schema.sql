@@ -1,5 +1,5 @@
 -- データベースの状態確認用（何も変更しない）。SQL Editor で実行すると、
--- 0001〜0003 がそれぞれ適用済みかどうかを表示する。
+-- 0001〜0004 がそれぞれ適用済みかどうかを表示する。
 select
   case when to_regclass('public.families') is null then '未実行' else '実行済み' end as "0001_init.sql",
   case
@@ -22,4 +22,13 @@ select
         where table_schema = 'public' and table_name = 'users' and column_name = 'grade_year_start'
       ) then '実行済み'
     else '未実行'
-  end as "0003_zkai_and_exchange.sql";
+  end as "0003_zkai_and_exchange.sql",
+  case
+    when to_regclass('public.families') is null then '（先に 0001 を実行）'
+    when to_regclass('public.zkai_items') is not null
+      and exists (
+        select 1 from information_schema.columns
+        where table_schema = 'public' and table_name = 'zkai_checks' and column_name = 'item_id'
+      ) then '実行済み'
+    else '未実行'
+  end as "0004_zkai_items.sql";

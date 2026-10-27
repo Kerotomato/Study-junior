@@ -159,12 +159,25 @@ export interface ZkaiCheck {
   grade: number;
   year_start: number;
   month: number;
-  subject: string;
+  /** 6教科のどれか。追加した教材のチェックなら null */
+  subject: string | null;
+  /** 追加した教材のチェックなら教材の id */
+  item_id: string | null;
   points: number;
   checked_at: string;
   revoked_at: string | null;
   revoke_reason: string | null;
   revoked_by: string | null;
+}
+
+/** 親が子どもごとに追加した Z会の教材（表の行） */
+export interface ZkaiItem {
+  id: string;
+  child_id: string;
+  name: string;
+  points: number;
+  created_at: string;
+  archived_at: string | null;
 }
 
 export interface ZkaiPointRule {

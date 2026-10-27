@@ -83,6 +83,7 @@ export default async function ChildDetailPage({
 
       <section className="card mb-4 space-y-4">
         <h2 className="h2">教材</h2>
+        <MaterialForm subjects={subjects} back={back} childId={child.id} />
         {groupMaterialsBySubject(materials, subjects).map((group) => (
           <div key={group.key} className="space-y-3">
             <h3 className="border-b border-stone-200 pb-1 text-sm font-bold text-stone-600">{group.subject}</h3>
@@ -103,7 +104,6 @@ export default async function ChildDetailPage({
             ))}
           </div>
         ))}
-        <MaterialForm subjects={subjects} back={back} childId={child.id} />
       </section>
 
       <section className="card mb-4">

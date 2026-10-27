@@ -16,7 +16,11 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Se
   return (
     <>
       <Flash searchParams={searchParams} />
-      <section className="card mb-4 space-y-4">
+      <section className="card mb-4">
+        <h2 className="h2">教材を登録</h2>
+        <MaterialForm subjects={subjects} back="/child/materials" />
+      </section>
+      <section className="card space-y-4">
         <h2 className="h2">教材と進捗</h2>
         {materials.length === 0 && <p className="text-sm text-stone-500">まだ教材がありません</p>}
         {groupMaterialsBySubject(materials, subjects).map((group) => (
@@ -40,10 +44,6 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Se
             </div>
           </div>
         ))}
-      </section>
-      <section className="card">
-        <h2 className="h2">教材を登録</h2>
-        <MaterialForm subjects={subjects} back="/child/materials" />
       </section>
     </>
   );
