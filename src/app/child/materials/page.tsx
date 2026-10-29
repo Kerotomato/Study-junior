@@ -2,16 +2,15 @@ import { startNextLap } from "@/app/actions/materials";
 import { Flash, type SearchParams } from "@/components/Flash";
 import { MaterialForm } from "@/components/MaterialForm";
 import { ProgressBar } from "@/components/ProgressBar";
-import { requireChild } from "@/lib/auth";
+import { requireChild, requireUserId } from "@/lib/auth";
 import { formatPoints } from "@/lib/format";
 import { groupMaterialsBySubject } from "@/lib/labels";
 import { childMaterials, familySubjects } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function MaterialsPage({ searchParams }: { searchParams: SearchParams }) {
-  const me = await requireChild();
-  const supabase = await createClient();
-  const [subjects, materials] = await Promise.all([familySubjects(supabase, me.family_id), childMaterials(supabase, me.id)]);
+  const [supabase, userId] = await Promise.all([createClient(), requireUserId()]);
+  const [, subjects, materials] = await Promise.all([requireChild(), familySubjects(supabase), childMaterials(supabase, userId)]);
 
   return (
     <>

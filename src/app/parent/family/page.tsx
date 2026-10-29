@@ -9,12 +9,13 @@ import { currentZkaiGrade } from "@/lib/zkai";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function FamilyPage({ searchParams }: { searchParams: SearchParams }) {
-  const me = await requireParent();
   const supabase = await createClient();
-  const [members, subjects, { data: gradeRows }] = await Promise.all([
-    familyMembers(supabase, me.family_id),
-    familySubjects(supabase, me.family_id),
-    supabase.from("users").select("id, grade, grade_year_start").eq("family_id", me.family_id).eq("role", "child"),
+  const [, members, subjects, { data: gradeRows }] = await Promise.all([
+    requireParent(),
+    familyMembers(supabase),
+    familySubjects(supabase),
+    // RLS で自分の家族だけが返る
+    supabase.from("users").select("id, grade, grade_year_start").eq("role", "child"),
   ]);
   const today = todayJst();
   const grades = new Map(

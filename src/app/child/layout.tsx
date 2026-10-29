@@ -1,11 +1,11 @@
 import { AppShell } from "@/components/AppShell";
-import { requireChild } from "@/lib/auth";
+import { requireChild, requireUserId } from "@/lib/auth";
 import { unreadCount } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function ChildLayout({ children }: { children: React.ReactNode }) {
-  const me = await requireChild();
-  const unread = await unreadCount(await createClient(), me.id);
+  const [supabase, userId] = await Promise.all([createClient(), requireUserId()]);
+  const [me, unread] = await Promise.all([requireChild(), unreadCount(supabase, userId)]);
   const links = [
     { href: "/child", label: "ホーム" },
     { href: "/child/record", label: "記録" },

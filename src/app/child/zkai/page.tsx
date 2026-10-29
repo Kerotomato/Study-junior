@@ -1,20 +1,20 @@
 import { Flash, type SearchParams } from "@/components/Flash";
 import { GradeTabs, ZkaiProgress, ZkaiTable } from "@/components/ZkaiTable";
-import { requireChild } from "@/lib/auth";
+import { requireChild, requireUserId } from "@/lib/auth";
 import { todayJst } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/server";
 import { pickGrade, remainingThisMonth, zkaiRows } from "@/lib/zkai";
 import { childCurrentGrade, zkaiChecks, zkaiItems, zkaiPoints } from "@/lib/zkaiData";
 
 export default async function ZkaiPage({ searchParams }: { searchParams: SearchParams }) {
-  const me = await requireChild();
-  const supabase = await createClient();
+  const [supabase, userId] = await Promise.all([createClient(), requireUserId()]);
   const today = todayJst();
-  const [current, checks, points, items] = await Promise.all([
-    childCurrentGrade(supabase, me.id, today),
-    zkaiChecks(supabase, me.id),
-    zkaiPoints(supabase, me.family_id),
-    zkaiItems(supabase, me.id),
+  const [, current, checks, points, items] = await Promise.all([
+    requireChild(),
+    childCurrentGrade(supabase, userId, today),
+    zkaiChecks(supabase, userId),
+    zkaiPoints(supabase),
+    zkaiItems(supabase, userId),
   ]);
 
   // どの学年の表もいつでも見られ、どのマスもいつでもチェックできる

@@ -1,6 +1,6 @@
 import { createTestGoal, deleteTestGoal, submitTestResult } from "@/app/actions/tests";
 import { Flash, type SearchParams } from "@/components/Flash";
-import { requireChild } from "@/lib/auth";
+import { requireChild, requireUserId } from "@/lib/auth";
 import { formatJstDateTime } from "@/lib/dates";
 import { formatPoints } from "@/lib/format";
 import { describeTestGoal } from "@/lib/points";
@@ -8,11 +8,11 @@ import { createClient } from "@/lib/supabase/server";
 import type { TestGoal, TestResult } from "@/lib/types";
 
 export default async function TestsPage({ searchParams }: { searchParams: SearchParams }) {
-  const me = await requireChild();
-  const supabase = await createClient();
-  const [{ data: goalRows }, { data: resultRows }] = await Promise.all([
-    supabase.from("test_goals").select("*").eq("child_id", me.id).order("created_at"),
-    supabase.from("test_results").select("*").eq("child_id", me.id).order("created_at", { ascending: false }).limit(30),
+  const [supabase, userId] = await Promise.all([createClient(), requireUserId()]);
+  const [, { data: goalRows }, { data: resultRows }] = await Promise.all([
+    requireChild(),
+    supabase.from("test_goals").select("*").eq("child_id", userId).order("created_at"),
+    supabase.from("test_results").select("*").eq("child_id", userId).order("created_at", { ascending: false }).limit(30),
   ]);
   const goals = (goalRows ?? []) as TestGoal[];
   const results = (resultRows ?? []) as TestResult[];

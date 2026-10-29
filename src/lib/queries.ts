@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, jstMidnightIso, monthStart, todayJst, weekEnd, weekStart } from "./dates";
+import type { UserClient } from "./supabase/server";
 import { currentStreak } from "./points";
 import type { LedgerEntry, Material, Notification, Rules, Subject } from "./types";
 
@@ -13,47 +14,95 @@ export interface ChildSummary {
   weekMinutes: number;
 }
 
-export async function childSummary(client: SupabaseClient, childId: string): Promise<ChildSummary> {
-  const today = todayJst();
-  const [{ data: ledger, error: ledgerError }, { data: logs, error: logsError }] = await Promise.all([
-    client.from("point_ledger").select("amount, kind, created_at").eq("child_id", childId),
-    client
-      .from("study_logs")
-      .select("study_date, minutes")
-      .eq("child_id", childId)
-      .is("deleted_at", null)
-      .gte("study_date", addDays(today, -400)),
-  ]);
-  if (ledgerError) throw ledgerError;
-  if (logsError) throw logsError;
+type SummaryLedgerRow = Pick<LedgerEntry, "amount" | "kind" | "created_at"> & { child_id: string };
+type SummaryLogRow = { child_id: string; study_date: string; minutes: number };
 
-  const entries = (ledger ?? []) as Pick<LedgerEntry, "amount" | "kind" | "created_at">[];
-  const monthFrom = new Date(jstMidnightIso(monthStart(today))).getTime();
-  const rows = (logs ?? []) as { study_date: string; minutes: number }[];
+function summarize(
+  balance: number,
+  monthLedger: SummaryLedgerRow[],
+  logs: SummaryLogRow[],
+  today: string,
+): ChildSummary {
   const ws = weekStart(today);
   const we = weekEnd(today);
   return {
-    balance: entries.reduce((s, e) => s + e.amount, 0),
-    monthPoints: entries
-      .filter((e) => e.kind !== "exchange" && new Date(e.created_at).getTime() >= monthFrom)
-      .reduce((s, e) => s + e.amount, 0),
+    balance,
+    monthPoints: monthLedger.filter((e) => e.kind !== "exchange").reduce((s, e) => s + e.amount, 0),
     streak: currentStreak(
-      rows.map((r) => r.study_date),
+      logs.map((r) => r.study_date),
       today,
     ),
-    todayMinutes: rows.filter((r) => r.study_date === today).reduce((s, r) => s + r.minutes, 0),
-    weekMinutes: rows.filter((r) => r.study_date >= ws && r.study_date <= we).reduce((s, r) => s + r.minutes, 0),
+    todayMinutes: logs.filter((r) => r.study_date === today).reduce((s, r) => s + r.minutes, 0),
+    weekMinutes: logs.filter((r) => r.study_date >= ws && r.study_date <= we).reduce((s, r) => s + r.minutes, 0),
   };
 }
 
-export async function familyRules(client: SupabaseClient, familyId: string): Promise<Rules> {
-  const { data, error } = await client.from("rules").select("*").eq("family_id", familyId).single();
+/**
+ * 子どもの集計（残高・今月のポイント・連続日数・今日／今週の勉強時間）。
+ * 残高は集計ビュー（point_balances）で DB 側で合計し、台帳は今月の分だけ読む。
+ * childId が null なら RLS で見られる子ども全員分（親の一覧用）。
+ */
+async function loadSummaries(client: SupabaseClient, childId: string | null): Promise<Map<string, ChildSummary>> {
+  const today = todayJst();
+  let balancesQ = client.from("point_balances").select("child_id, balance");
+  let ledgerQ = client
+    .from("point_ledger")
+    .select("child_id, amount, kind, created_at")
+    .gte("created_at", jstMidnightIso(monthStart(today)));
+  let logsQ = client
+    .from("study_logs")
+    .select("child_id, study_date, minutes")
+    .is("deleted_at", null)
+    .gte("study_date", addDays(today, -400));
+  if (childId) {
+    balancesQ = balancesQ.eq("child_id", childId);
+    ledgerQ = ledgerQ.eq("child_id", childId);
+    logsQ = logsQ.eq("child_id", childId);
+  }
+  const [balances, ledger, logs] = await Promise.all([balancesQ, ledgerQ, logsQ]);
+  if (balances.error) throw balances.error;
+  if (ledger.error) throw ledger.error;
+  if (logs.error) throw logs.error;
+
+  const ids = new Set<string>(childId ? [childId] : []);
+  for (const r of [...(balances.data ?? []), ...(ledger.data ?? []), ...(logs.data ?? [])]) ids.add(r.child_id as string);
+  const result = new Map<string, ChildSummary>();
+  for (const id of ids) {
+    const balance = (balances.data ?? []).find((b) => b.child_id === id)?.balance ?? 0;
+    result.set(
+      id,
+      summarize(
+        balance as number,
+        ((ledger.data ?? []) as SummaryLedgerRow[]).filter((r) => r.child_id === id),
+        ((logs.data ?? []) as SummaryLogRow[]).filter((r) => r.child_id === id),
+        today,
+      ),
+    );
+  }
+  return result;
+}
+
+export const EMPTY_SUMMARY: ChildSummary = { balance: 0, monthPoints: 0, streak: 0, todayMinutes: 0, weekMinutes: 0 };
+
+export async function childSummary(client: SupabaseClient, childId: string): Promise<ChildSummary> {
+  return (await loadSummaries(client, childId)).get(childId) ?? EMPTY_SUMMARY;
+}
+
+/** RLS で見られる子ども全員分の集計を、子どもの人数に関係なく3回の問い合わせで取る（親の一覧用） */
+export async function visibleChildSummaries(client: UserClient): Promise<Map<string, ChildSummary>> {
+  return loadSummaries(client, null);
+}
+
+/** 家族のルール。RLS で自分の家族の1行だけが返る */
+export async function familyRules(client: UserClient): Promise<Rules> {
+  const { data, error } = await client.from("rules").select("*").single();
   if (error) throw error;
   return data as Rules;
 }
 
-export async function familySubjects(client: SupabaseClient, familyId: string): Promise<Subject[]> {
-  const { data, error } = await client.from("subjects").select("*").eq("family_id", familyId).order("created_at");
+/** 家族の科目。RLS で自分の家族の分だけが返る */
+export async function familySubjects(client: UserClient): Promise<Subject[]> {
+  const { data, error } = await client.from("subjects").select("*").order("created_at");
   if (error) throw error;
   return (data ?? []) as Subject[];
 }

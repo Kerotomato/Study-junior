@@ -8,7 +8,9 @@ import { ProgressBar } from "@/components/ProgressBar";
 import { Stat } from "@/components/Stat";
 import { StudyLogList } from "@/components/StudyLogList";
 import { TaskForm } from "@/components/TaskForm";
-import { requireChildOfFamily, requireParent } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { requireParent } from "@/lib/auth";
+import { familyChildren } from "@/lib/family";
 import { addDays, todayJst } from "@/lib/dates";
 import { formatHours, formatPoints } from "@/lib/format";
 import { groupMaterialsBySubject, taskLabel } from "@/lib/labels";
@@ -24,26 +26,30 @@ export default async function ChildDetailPage({
   params: Promise<{ id: string }>;
   searchParams: SearchParams;
 }) {
-  const me = await requireParent();
-  const child = await requireChildOfFamily(me, (await params).id);
-  const supabase = await createClient();
+  const [supabase, { id: childId }] = await Promise.all([createClient(), params]);
   const today = todayJst();
-  const back = `/parent/children/${child.id}`;
-  const [summary, subjects, materials, { data: logs }, { data: ledger }, { data: tasks }, { data: goals }] = await Promise.all([
-    childSummary(supabase, child.id),
-    familySubjects(supabase, me.family_id),
-    childMaterials(supabase, child.id),
+  // 子どもが同じ家族かの確認（家族の子ども一覧に入っているか）と、画面のデータの取得を同時に行う。
+  // データは RLS で守られているので、ほかの家族の子どもの id を指定しても何も返らない
+  const [, kids, summary, subjects, materials, { data: logs }, { data: ledger }, { data: tasks }, { data: goals }] = await Promise.all([
+    requireParent(),
+    familyChildren(supabase),
+    childSummary(supabase, childId),
+    familySubjects(supabase),
+    childMaterials(supabase, childId),
     supabase
       .from("study_logs")
       .select("*")
-      .eq("child_id", child.id)
+      .eq("child_id", childId)
       .gte("study_date", addDays(today, -60))
       .order("study_date", { ascending: false })
       .order("created_at", { ascending: false }),
-    supabase.from("point_ledger").select("*").eq("child_id", child.id).order("created_at", { ascending: false }).limit(30),
-    supabase.from("tasks").select("*").eq("child_id", child.id).eq("date", today).order("created_at"),
-    supabase.from("test_goals").select("*").eq("child_id", child.id).order("created_at"),
+    supabase.from("point_ledger").select("*").eq("child_id", childId).order("created_at", { ascending: false }).limit(30),
+    supabase.from("tasks").select("*").eq("child_id", childId).eq("date", today).order("created_at"),
+    supabase.from("test_goals").select("*").eq("child_id", childId).order("created_at"),
   ]);
+  const child = kids.find((k) => k.id === childId);
+  if (!child) redirect("/parent");
+  const back = `/parent/children/${child.id}`;
 
   return (
     <>

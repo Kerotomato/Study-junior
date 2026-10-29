@@ -8,7 +8,7 @@ import { formatPoints } from "@/lib/format";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { ZkaiCheck, ZkaiItem } from "@/lib/types";
 import { ZKAI_GRADES, ZKAI_POINT_STEP, ZKAI_SUBJECTS, type ZkaiSubject, isZkaiSubject, yearStartOfGrade, zkaiYearStart } from "@/lib/zkai";
-import { childCurrentGrade, zkaiPoints } from "@/lib/zkaiData";
+import { childCurrentGrade, zkaiPointsForFamily } from "@/lib/zkaiData";
 
 /**
  * 子どもがマスのチェックを付け外しする。どの学年・どの月のマスもいつでもチェックできる。
@@ -42,7 +42,7 @@ export async function toggleZkaiCheck(form: FormData) {
     points = (item as ZkaiItem).points;
   } else {
     rowLabel = subject!;
-    points = (await zkaiPoints(admin, me.family_id))[subject as ZkaiSubject];
+    points = (await zkaiPointsForFamily(admin, me.family_id))[subject as ZkaiSubject];
   }
   const label = `${grade}年 ${zkaiMonthLabel(month)} ${rowLabel}`;
 

@@ -55,9 +55,11 @@ export async function signIn(form: FormData) {
   const email = id.includes("@") ? id : childEmail(id);
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) fail("/login", "IDまたはパスワードが違います");
-  redirect("/");
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error || !data.user) fail("/login", "IDまたはパスワードが違います");
+  // 役割を見て、最初の画面へ直接移る（「/」を経由すると、もう1回画面の読み込みとリダイレクトが起きるため）
+  const { data: profile } = await supabase.from("users").select("role").eq("id", data.user.id).maybeSingle();
+  redirect(profile?.role === "parent" ? "/parent" : profile?.role === "child" ? "/child" : "/");
 }
 
 export async function signOut() {

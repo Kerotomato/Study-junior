@@ -48,18 +48,26 @@ export async function getRules(admin: SupabaseClient, familyId: string): Promise
   return data as Rules;
 }
 
+/** 残高。台帳の合計は集計ビュー（point_balances）で DB 側で計算する */
 export async function balanceOf(client: SupabaseClient, childId: string): Promise<number> {
-  const { data, error } = await client.from("point_ledger").select("amount").eq("child_id", childId);
+  const { data, error } = await client.from("point_balances").select("balance").eq("child_id", childId).maybeSingle();
   if (error) throw error;
-  return (data ?? []).reduce((sum, r) => sum + (r.amount as number), 0);
+  return (data?.balance as number | undefined) ?? 0;
+}
+
+/** 残高と、完了していない交換の請求を差し引いた、まだ請求できるポイント */
+export async function pointsAvailability(client: SupabaseClient, childId: string): Promise<{ balance: number; available: number }> {
+  const [balance, { data, error }] = await Promise.all([
+    balanceOf(client, childId),
+    client.from("exchange_requests").select("points").eq("child_id", childId).eq("status", "pending"),
+  ]);
+  if (error) throw error;
+  return { balance, available: balance - (data ?? []).reduce((s, r) => s + (r.points as number), 0) };
 }
 
 /** 完了していない交換の請求を差し引いた、まだ請求できるポイント */
 export async function availablePoints(client: SupabaseClient, childId: string): Promise<number> {
-  const balance = await balanceOf(client, childId);
-  const { data, error } = await client.from("exchange_requests").select("points").eq("child_id", childId).eq("status", "pending");
-  if (error) throw error;
-  return balance - (data ?? []).reduce((s, r) => s + (r.points as number), 0);
+  return (await pointsAvailability(client, childId)).available;
 }
 
 /** 記録が増えた日について、連続記録ボーナスと週の目標達成ボーナスを判定する */

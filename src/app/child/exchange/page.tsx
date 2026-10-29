@@ -2,21 +2,20 @@ import { cancelExchange, requestExchange } from "@/app/actions/exchange";
 import { ExchangeStatus } from "@/components/ExchangeStatus";
 import { Flash, type SearchParams } from "@/components/Flash";
 import { LedgerList } from "@/components/LedgerList";
-import { requireChild } from "@/lib/auth";
-import { availablePoints, balanceOf } from "@/lib/awards";
+import { requireChild, requireUserId } from "@/lib/auth";
+import { pointsAvailability } from "@/lib/awards";
 import { formatJstDateTime } from "@/lib/dates";
 import { formatPoints } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import type { ExchangeRequest, LedgerEntry } from "@/lib/types";
 
 export default async function ExchangePage({ searchParams }: { searchParams: SearchParams }) {
-  const me = await requireChild();
-  const supabase = await createClient();
-  const [balance, available, { data }, { data: ledger }] = await Promise.all([
-    balanceOf(supabase, me.id),
-    availablePoints(supabase, me.id),
-    supabase.from("exchange_requests").select("*").eq("child_id", me.id).order("created_at", { ascending: false }).limit(30),
-    supabase.from("point_ledger").select("*").eq("child_id", me.id).order("created_at", { ascending: false }).limit(50),
+  const [supabase, userId] = await Promise.all([createClient(), requireUserId()]);
+  const [, { balance, available }, { data }, { data: ledger }] = await Promise.all([
+    requireChild(),
+    pointsAvailability(supabase, userId),
+    supabase.from("exchange_requests").select("*").eq("child_id", userId).order("created_at", { ascending: false }).limit(30),
+    supabase.from("point_ledger").select("*").eq("child_id", userId).order("created_at", { ascending: false }).limit(50),
   ]);
   const requests = (data ?? []) as ExchangeRequest[];
   const pending = requests.filter((r) => r.status === "pending");

@@ -12,21 +12,23 @@ import { ZKAI_MONTHS, ZKAI_POINT_STEP, type ZkaiRow, pickGrade, remainingThisMon
 import { childCurrentGrade, zkaiChecks, zkaiItems, zkaiPoints } from "@/lib/zkaiData";
 
 export default async function ParentZkaiPage({ searchParams }: { searchParams: SearchParams }) {
-  const me = await requireParent();
-  const supabase = await createClient();
-  const params = await searchParams;
-  const kids = await familyChildren(supabase, me.family_id);
+  const [supabase, params] = await Promise.all([createClient(), searchParams]);
+  const today = todayJst();
+  const load = (childId: string) =>
+    Promise.all([childCurrentGrade(supabase, childId, today), zkaiChecks(supabase, childId), zkaiItems(supabase, childId)]);
+  // URL で子どもが選ばれていれば、子どもの一覧と同時にその子のデータも取る（RLS でほかの家族の分は返らない）
+  const requested = typeof params.child === "string" ? params.child : null;
+  const [, kids, points, early] = await Promise.all([
+    requireParent(),
+    familyChildren(supabase),
+    zkaiPoints(supabase),
+    requested ? load(requested) : null,
+  ]);
   if (kids.length === 0) {
     return <p className="card text-sm">まだ子どもが登録されていません。</p>;
   }
-  const child = kids.find((k) => k.id === params.child) ?? kids[0];
-  const today = todayJst();
-  const [current, checks, points, items] = await Promise.all([
-    childCurrentGrade(supabase, child.id, today),
-    zkaiChecks(supabase, child.id),
-    zkaiPoints(supabase, me.family_id),
-    zkaiItems(supabase, child.id),
-  ]);
+  const child = kids.find((k) => k.id === requested) ?? kids[0];
+  const [current, checks, items] = early && child.id === requested ? early : await load(child.id);
   const grade = pickGrade(params.grade, current ?? 1);
   const isCurrent = grade === current;
   const shownItems = items.filter((i) => !i.archived_at);

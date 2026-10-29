@@ -3,7 +3,7 @@ import { Flash, type SearchParams } from "@/components/Flash";
 import { ProgressBar } from "@/components/ProgressBar";
 import { Stat } from "@/components/Stat";
 import { TaskForm } from "@/components/TaskForm";
-import { requireChild } from "@/lib/auth";
+import { requireChild, requireUserId } from "@/lib/auth";
 import { formatJpDate, todayJst } from "@/lib/dates";
 import { formatHours, formatPoints } from "@/lib/format";
 import { pageRange, taskLabel } from "@/lib/labels";
@@ -15,19 +15,20 @@ import Link from "next/link";
 import type { Task } from "@/lib/types";
 
 export default async function ChildHome({ searchParams }: { searchParams: SearchParams }) {
-  const me = await requireChild();
-  const supabase = await createClient();
+  const [supabase, userId] = await Promise.all([createClient(), requireUserId()]);
   const today = todayJst();
-  const [summary, rules, subjects, materials, { data: taskRows }, grade, checks, zkaiPointRules, items] = await Promise.all([
-    childSummary(supabase, me.id),
-    familyRules(supabase, me.family_id),
-    familySubjects(supabase, me.family_id),
-    childMaterials(supabase, me.id),
-    supabase.from("tasks").select("*").eq("child_id", me.id).lte("date", today).order("created_at"),
-    childCurrentGrade(supabase, me.id, today),
-    zkaiChecks(supabase, me.id),
-    zkaiPoints(supabase, me.family_id),
-    zkaiItems(supabase, me.id),
+  // 役割の確認（requireChild）と画面のデータの取得を同時に行う
+  const [me, summary, rules, subjects, materials, { data: taskRows }, grade, checks, zkaiPointRules, items] = await Promise.all([
+    requireChild(),
+    childSummary(supabase, userId),
+    familyRules(supabase),
+    familySubjects(supabase),
+    childMaterials(supabase, userId),
+    supabase.from("tasks").select("*").eq("child_id", userId).lte("date", today).order("created_at"),
+    childCurrentGrade(supabase, userId, today),
+    zkaiChecks(supabase, userId),
+    zkaiPoints(supabase),
+    zkaiItems(supabase, userId),
   ]);
   // 今の学年が表の範囲（1〜3年）のときだけ、今月のZ会の残りを出す
   const zkaiLeft =

@@ -9,18 +9,13 @@ import { createClient } from "@/lib/supabase/server";
 import type { ExchangeRequest } from "@/lib/types";
 
 export default async function ExchangesPage({ searchParams }: { searchParams: SearchParams }) {
-  const me = await requireParent();
   const supabase = await createClient();
-  const kids = await familyChildren(supabase, me.family_id);
-  const { data } = await supabase
-    .from("exchange_requests")
-    .select("*")
-    .in(
-      "child_id",
-      kids.map((k) => k.id),
-    )
-    .order("created_at", { ascending: false })
-    .limit(50);
+  // 交換の一覧は RLS で自分の家族の子どもの分だけが返るので、子どもの一覧を待たずに同時に取る
+  const [, kids, { data }] = await Promise.all([
+    requireParent(),
+    familyChildren(supabase),
+    supabase.from("exchange_requests").select("*").order("created_at", { ascending: false }).limit(50),
+  ]);
   const requests = (data ?? []) as ExchangeRequest[];
   const pending = requests.filter((r) => r.status === "pending");
   const past = requests.filter((r) => r.status !== "pending");

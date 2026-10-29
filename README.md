@@ -21,6 +21,7 @@ Z会の教材ごとのチェックリスト（学年×教科×月）もあり、
    - `0002_v1_1_changes.sql`：v1.1 の変更（既存データも引き継ぐ）
    - `0003_zkai_and_exchange.sql`：Z会チェックリストと、交換の「渡した」で完了する変更
    - `0004_zkai_items.sql`：親が Z会の教材（6教科以外の行）を追加できるようにする変更
+   - `0005_performance.sql`：表示の高速化（残高の集計ビュー、インデックス、権限チェックの軽量化）
 3. `.env.example` を `.env.local` にコピーして値を入れる
    - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`（サーバー側のみで使用）
@@ -35,6 +36,15 @@ npm run lint    # 型チェック
 
 Vercel では同じ環境変数を Project Settings > Environment Variables に設定します。
 
+### 速さについて
+
+- Supabase のリージョン（Project Settings > General）と、Vercel の関数のリージョン（Project Settings > Functions > Function Region）を
+  同じ地域にする。Supabase が東京（ap-northeast-1）なら Vercel は Tokyo（hnd1）。離れていると、DB への通信1回ごとに往復の時間がかかる
+- Supabase の JWT 署名鍵を非対称鍵（Authentication > JWT Keys / Signing Keys で ECC など）にすると、
+  画面ごとのログイン確認がサーバー内で済み、Supabase Auth への通信がなくなる（旧来の共有鍵のままでも動く）
+- 環境変数 `SUPABASE_TIMING=1` を付けると、Supabase への通信ごとの時間がサーバーのログ（Vercel の Logs）に出る
+  （例：`[supabase] 132ms GET /rest/v1/users`）。確認が終わったら外す
+
 ## データベースの更新手順（Supabase の画面で行う）
 
 SQL ファイルは「どこかに置く」ものではなく、**中身をコピーして Supabase の SQL Editor に貼り付けて実行**します。
@@ -43,7 +53,7 @@ SQL ファイルは「どこかに置く」ものではなく、**中身をコ�
    1. [Supabase](https://supabase.com/dashboard) でプロジェクトを開き、左のメニューから **SQL Editor** を開く
    2. 右上の **＋（New query）** で新しいクエリを作る
    3. `supabase/check_schema.sql` の中身を全部コピーして貼り付け、**Run** を押す
-   4. 結果の表で、`0001`〜`0004` のファイルがそれぞれ「実行済み」か「未実行」かを見る
+   4. 結果の表で、`0001`〜`0005` のファイルがそれぞれ「実行済み」か「未実行」かを見る
 2. 「未実行」のファイルを番号の小さい順に実行する
    1. GitHub でファイルを開き、右上のコピーボタン（Copy raw file）で中身を全部コピーする
    2. SQL Editor で新しいクエリを作って貼り付け（前の内容は消しておく）、**Run** を押す
@@ -70,11 +80,15 @@ SQL ファイルは「どこかに置く」ものではなく、**中身をコ�
 - **書き込みはすべてサーバー経由**: 読み取りは RLS（`can_view_child` など）で家族ごとに分離し、
   書き込みは Server Action で権限を確認してから service role で行う。
   authenticated ロールには書き込みポリシーがないため、子どもが自分でポイントを付与することはできない。
-- **残高は `point_ledger` の合計**で求め、直接書き換えない。`(child_id, kind, ref_id)` の一意制約で
+- **残高は `point_ledger` の合計**で求め、直接書き換えない。合計は集計ビュー `point_balances` で DB 側で計算する。`(child_id, kind, ref_id)` の一意制約で
   同じボーナスの二重付与を防ぐ。
 - **日付は日本時間**。タイマー記録は開始時刻の日付で、平日／休日（土日・祝日）レートと 1日23時間の上限を判定する。
   祝日判定は `@holiday-jp/holiday_jp`。
 - ポイント計算は `src/lib/points.ts` の純粋関数にまとめ、`src/lib/points.test.ts` でテストしている。
+- **ログイン確認**: `proxy.ts` はセッションの有無の確認と期限切れのリフレッシュだけを行う（通常は通信しない）。
+  ユーザーの確認（JWT の検証）と役割の取得は `lib/auth.ts` で、React の `cache()` により1回のリクエストで1回だけ行う。
+- **画面の読み取り**: 家族の範囲のデータ（ルール・科目・家族のメンバーなど）は RLS で絞り、ログイン確認と同時に取得する。
+  これらの関数はログイン中ユーザー用のクライアント（`UserClient` 型）しか受け取らず、RLS を通らない管理用クライアントは渡せない。
 
 ### 仕様書で決まっていなかった点の扱い
 

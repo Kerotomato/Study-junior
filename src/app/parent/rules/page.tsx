@@ -37,9 +37,8 @@ function NumberField({
 }
 
 export default async function RulesPage({ searchParams }: { searchParams: SearchParams }) {
-  const me = await requireParent();
   const supabase = await createClient();
-  const [rules, zkai] = await Promise.all([familyRules(supabase, me.family_id), zkaiPoints(supabase, me.family_id)]);
+  const [, rules, zkai] = await Promise.all([requireParent(), familyRules(supabase), zkaiPoints(supabase)]);
 
   return (
     <>

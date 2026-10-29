@@ -2,14 +2,14 @@ import Link from "next/link";
 import { requireParent } from "@/lib/auth";
 import { familyChildren } from "@/lib/family";
 import { formatHours, formatPoints } from "@/lib/format";
-import { childSummary } from "@/lib/queries";
+import { EMPTY_SUMMARY, visibleChildSummaries } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function ParentHome() {
-  const me = await requireParent();
   const supabase = await createClient();
-  const kids = await familyChildren(supabase, me.family_id);
-  const summaries = await Promise.all(kids.map((k) => childSummary(supabase, k.id)));
+  // 子どもの人数に関係なく、一覧と集計を同時に取る（集計は RLS で家族の子ども全員分）
+  const [, kids, summaryById] = await Promise.all([requireParent(), familyChildren(supabase), visibleChildSummaries(supabase)]);
+  const summaries = kids.map((k) => summaryById.get(k.id) ?? EMPTY_SUMMARY);
 
   if (kids.length === 0) {
     return (

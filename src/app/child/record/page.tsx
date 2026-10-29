@@ -2,7 +2,7 @@ import { saveStudyLog } from "@/app/actions/study";
 import { Flash, type SearchParams } from "@/components/Flash";
 import { MemoField } from "@/components/MemoField";
 import { SubjectMaterialFields } from "@/components/SubjectMaterialFields";
-import { requireChild } from "@/lib/auth";
+import { requireChild, requireUserId } from "@/lib/auth";
 import { todayJst } from "@/lib/dates";
 import { MAX_DAILY_MINUTES } from "@/lib/points";
 import { childMaterials, familySubjects } from "@/lib/queries";
@@ -10,9 +10,8 @@ import { createClient } from "@/lib/supabase/server";
 import { Timer } from "./Timer";
 
 export default async function RecordPage({ searchParams }: { searchParams: SearchParams }) {
-  const me = await requireChild();
-  const supabase = await createClient();
-  const [subjects, materials] = await Promise.all([familySubjects(supabase, me.family_id), childMaterials(supabase, me.id)]);
+  const [supabase, userId] = await Promise.all([createClient(), requireUserId()]);
+  const [, subjects, materials] = await Promise.all([requireChild(), familySubjects(supabase), childMaterials(supabase, userId)]);
   const today = todayJst();
 
   return (

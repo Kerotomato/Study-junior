@@ -1,10 +1,23 @@
 import "server-only";
 import { createServerClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import { cache } from "react";
+import { timedFetch } from "./timing";
 
-/** ログイン中ユーザーとして DB を読む（RLS が効く） */
-export async function createClient() {
+declare const userClient: unique symbol;
+
+/**
+ * ログイン中ユーザーとして DB を読むクライアント（RLS が効く）。
+ * 家族の範囲を RLS に任せる読み取り関数はこの型だけを受け取るので、
+ * RLS を通らない管理用クライアント（createAdminClient）を渡すと型エラーになる。
+ */
+export type UserClient = SupabaseClient & { readonly [userClient]: true };
+
+/** 1回のリクエストの中では同じクライアントを使い回す */
+export const createClient = cache(async (): Promise<UserClient> => {
   const cookieStore = await cookies();
+  const fetch = timedFetch();
   return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
     cookies: {
       getAll() {
@@ -18,5 +31,6 @@ export async function createClient() {
         }
       },
     },
-  });
-}
+    ...(fetch ? { global: { fetch } } : {}),
+  }) as UserClient;
+});

@@ -1,21 +1,39 @@
 import "server-only";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import { createAdminClient } from "./supabase/admin";
 import { createClient } from "./supabase/server";
 import type { Profile } from "./types";
 
-export async function getProfile(): Promise<Profile | null> {
+/**
+ * ログイン中のユーザーの id。JWT の署名を確かめてから使う（getClaims）。
+ * Supabase の JWT 署名鍵が非対称（ES256 など）ならサーバー内で確かめるので通信しない。
+ * 旧来の共有鍵（HS256）のプロジェクトでは Supabase Auth に1回問い合わせる。
+ * どちらの場合も、1回のリクエストの中では1回だけ（レイアウトとページで共有）。
+ */
+export const getUserId = cache(async (): Promise<string | null> => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  const { data } = await supabase.auth.getClaims();
+  return data?.claims?.sub ?? null;
+});
+
+/** ユーザー・家族・役割（親／子）。1回のリクエストの中では1回だけ取得する */
+export const getProfile = cache(async (): Promise<Profile | null> => {
+  const userId = await getUserId();
+  if (!userId) return null;
+  const supabase = await createClient();
   const { data } = await supabase
     .from("users")
     .select("id, family_id, role, name, login_id")
-    .eq("id", user.id)
+    .eq("id", userId)
     .maybeSingle();
   return (data as Profile | null) ?? null;
+});
+
+export async function requireUserId(): Promise<string> {
+  const userId = await getUserId();
+  if (!userId) redirect("/login");
+  return userId;
 }
 
 export async function requireProfile(): Promise<Profile> {

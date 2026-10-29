@@ -1,12 +1,12 @@
 import { Flash, type SearchParams } from "@/components/Flash";
 import { NotificationList } from "@/components/NotificationList";
-import { requireParent } from "@/lib/auth";
+import { requireParent, requireUserId } from "@/lib/auth";
 import { recentNotifications } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function NotificationsPage({ searchParams }: { searchParams: SearchParams }) {
-  const me = await requireParent();
-  const notifications = await recentNotifications(await createClient(), me.id);
+  const [supabase, userId] = await Promise.all([createClient(), requireUserId()]);
+  const [, notifications] = await Promise.all([requireParent(), recentNotifications(supabase, userId)]);
   return (
     <>
       <Flash searchParams={searchParams} />

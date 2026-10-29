@@ -1,21 +1,21 @@
 import { Flash, type SearchParams } from "@/components/Flash";
 import { StudyLogList } from "@/components/StudyLogList";
-import { requireChild } from "@/lib/auth";
+import { requireChild, requireUserId } from "@/lib/auth";
 import { addDays, todayJst } from "@/lib/dates";
 import { childMaterials, familySubjects } from "@/lib/queries";
 import { createClient } from "@/lib/supabase/server";
 import type { StudyLog } from "@/lib/types";
 
 export default async function HistoryPage({ searchParams }: { searchParams: SearchParams }) {
-  const me = await requireChild();
-  const supabase = await createClient();
-  const [subjects, materials, { data: logs }] = await Promise.all([
-    familySubjects(supabase, me.family_id),
-    childMaterials(supabase, me.id),
+  const [supabase, userId] = await Promise.all([createClient(), requireUserId()]);
+  const [, subjects, materials, { data: logs }] = await Promise.all([
+    requireChild(),
+    familySubjects(supabase),
+    childMaterials(supabase, userId),
     supabase
       .from("study_logs")
       .select("*")
-      .eq("child_id", me.id)
+      .eq("child_id", userId)
       .gte("study_date", addDays(todayJst(), -60))
       .order("study_date", { ascending: false })
       .order("created_at", { ascending: false }),
